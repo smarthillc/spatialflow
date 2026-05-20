@@ -16,11 +16,9 @@
   body{font-family:var(--sans);background:var(--bg);color:var(--text);
        height:100vh;display:grid;grid-template-columns:240px 1fr 360px;overflow:hidden;}
 
-  /* ── Panels ── */
-  .panel{background:var(--panel);display:flex;flex-direction:column;gap:0;overflow:hidden;}
+  .panel{background:var(--panel);display:flex;flex-direction:column;overflow:hidden;}
   .panel-l{border-right:1px solid var(--border);}
   .panel-r{border-left:1px solid var(--border);}
-  .pscroll{overflow-y:auto;flex:1;padding:12px;display:flex;flex-direction:column;gap:8px;}
 
   .ph{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;
       text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px;
@@ -28,87 +26,81 @@
   .ph::before{content:'';width:3px;height:10px;background:var(--accent);border-radius:2px;}
   .ph:first-child{border-top:none;}
   .ph.v::before,.ph.v{color:var(--violet);} .ph.v::before{background:var(--violet);}
-  .ph.g::before,.ph.g{color:var(--ok);} .ph.g::before{background:var(--ok);}
-  .ph.d::before,.ph.d{color:var(--dim);} .ph.d::before{background:var(--dim);}
+  .ph.g::before,.ph.g{color:var(--ok);}     .ph.g::before{background:var(--ok);}
+  .ph.d::before,.ph.d{color:var(--dim);}    .ph.d::before{background:var(--dim);}
 
-  /* ── Element list ── */
+  /* Element list */
   .el-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:4px;
            font-family:var(--mono);font-size:10px;color:var(--dim);cursor:pointer;transition:all .12s;}
   .el-item:hover{background:var(--surface);color:var(--text);}
-  .el-item.sel{background:rgba(192,132,252,.1);color:var(--violet);outline:1px solid rgba(192,132,252,.2);border-radius:4px;}
+  .el-item.sel{background:rgba(192,132,252,.1);color:var(--violet);outline:1px solid rgba(192,132,252,.2);}
   .el-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
   .el-type{font-size:9px;color:var(--dim);margin-left:auto;}
   .el-constrained{width:5px;height:5px;border-radius:50%;background:var(--ok);flex-shrink:0;opacity:0;}
   .el-item.constrained .el-constrained{opacity:1;}
 
-  /* ── Add buttons ── */
+  /* Add buttons */
   .add-row{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:0 12px 10px;}
   .add-btn{font-family:var(--mono);font-size:10px;padding:5px 8px;background:var(--surface);
            border:1px solid var(--border);color:var(--dim);border-radius:3px;cursor:pointer;transition:all .12s;}
   .add-btn:hover{color:var(--accent2);border-color:var(--accent2);}
 
-  /* ── Signal monitor ── */
+  /* Signal monitor */
   .sig-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;
            padding:3px 12px;border-bottom:1px solid rgba(255,255,255,.025);}
-  .sig-name{color:var(--dim);}
-  .sig-val{color:var(--accent2);}
+  .sig-name{color:var(--dim);}  .sig-val{color:var(--accent2);}
 
-  /* ── Canvas ── */
+  /* Canvas */
   .canvas-wrap{display:flex;flex-direction:column;height:100vh;background:#08080f;overflow:hidden;}
   .toolbar{display:flex;align-items:center;gap:6px;padding:8px 14px;flex-shrink:0;
            background:var(--panel);border-bottom:1px solid var(--border);
            font-family:var(--mono);font-size:10px;color:var(--dim);}
   .logo{font-weight:700;color:var(--text);font-size:12px;}
   .logo span{color:var(--accent);}
-  .badge{background:var(--surface);border:1px solid var(--border);
-         padding:2px 7px;border-radius:3px;font-size:9px;}
+  .badge{background:var(--surface);border:1px solid var(--border);padding:2px 7px;border-radius:3px;font-size:9px;}
   .badge.live{color:var(--ok);border-color:rgba(80,232,144,.3);}
   .badge.busy{color:var(--violet);border-color:rgba(192,132,252,.3);animation:pulse .7s infinite;}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
   .canvas-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;
                 background:repeating-linear-gradient(45deg,transparent,transparent 10px,
                 rgba(255,255,255,.007) 10px,rgba(255,255,255,.007) 20px);}
-  .canvas-wrap-inner{position:relative;flex-shrink:0;}
+  .cwi{position:relative;flex-shrink:0;}
   canvas{display:block;box-shadow:0 0 0 1px #2a2a4a,0 12px 48px rgba(0,0,0,.7);}
-  canvas.hover{cursor:grab;}
-  canvas.drag{cursor:grabbing;}
+  canvas.hover{cursor:grab;}  canvas.drag{cursor:grabbing;}
   #overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
 
-  /* ── Inspector ── */
+  /* Inspector */
   .prop-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;
             padding:3px 12px;border-bottom:1px solid rgba(255,255,255,.025);}
-  .pn{color:var(--dim);}
-  .pv{color:var(--accent2);}
-
+  .pn{color:var(--dim);}  .pv{color:var(--accent2);}
   .c-row{font-family:var(--mono);font-size:9px;padding:4px 12px;line-height:1.6;
           border-bottom:1px solid rgba(255,255,255,.025);}
-  .c-prop{color:var(--dim);}
-  .c-expr{color:var(--accent2);}
+  .c-prop{color:var(--dim);}  .c-expr{color:var(--accent2);}
 
-  /* ── AI input ── */
-  .ai-wrap{padding:10px 12px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
+  /* Chat / AI */
+  .chat-area{display:flex;flex-direction:column;gap:6px;padding:10px 12px;flex-shrink:0;}
   .ai-input{width:100%;font-family:var(--sans);font-size:13px;background:var(--surface);
              border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:6px;
-             outline:none;resize:none;min-height:64px;line-height:1.5;}
-  .ai-input:focus{border-color:var(--violet);}
+             outline:none;resize:none;min-height:72px;line-height:1.5;}
+  .ai-input:focus{border-color:var(--accent);}
   .ai-input::placeholder{color:var(--dim);}
-  .ai-actions{display:flex;gap:6px;justify-content:flex-end;}
-  .ai-btn{font-family:var(--mono);font-size:10px;padding:6px 12px;border-radius:4px;
-           cursor:pointer;transition:all .15s;border:1px solid;}
-  .ai-btn.cmd{background:rgba(78,205,196,.08);border-color:rgba(78,205,196,.3);color:var(--accent2);}
-  .ai-btn.cmd:hover{background:rgba(78,205,196,.18);}
-  .ai-btn.intent{background:rgba(192,132,252,.08);border-color:rgba(192,132,252,.3);color:var(--violet);}
-  .ai-btn.intent:hover{background:rgba(192,132,252,.18);}
-  .ai-btn:disabled{opacity:.35;cursor:default;}
-  .ai-hint{font-family:var(--mono);font-size:9px;color:var(--dim);text-align:center;}
+  .send-btn{font-family:var(--mono);font-size:11px;padding:8px 16px;
+             background:rgba(126,184,255,.1);border:1px solid rgba(126,184,255,.3);
+             color:var(--accent);border-radius:4px;cursor:pointer;transition:all .15s;align-self:flex-end;}
+  .send-btn:hover{background:rgba(126,184,255,.2);}
+  .send-btn:disabled{opacity:.35;cursor:default;}
 
-  /* ── Intent cards ── */
+  /* Tool call chips in log */
+  .tool-call{font-family:var(--mono);font-size:9px;padding:3px 12px;color:var(--accent2);
+              border-left:2px solid rgba(78,205,196,.3);margin:1px 0;}
+  .tool-result{font-family:var(--mono);font-size:9px;padding:3px 12px;color:var(--dim);}
+
+  /* Intent cards */
   .intent-card{margin:0 12px 6px;background:var(--surface);border:1px solid var(--border);
-                border-radius:5px;overflow:hidden;}
+                border-radius:5px;overflow:hidden;flex-shrink:0;}
   .intent-card.reactive{border-color:rgba(80,232,144,.2);}
   .intent-card.directional{border-color:rgba(247,183,49,.3);}
   .intent-card.measure{border-color:rgba(78,205,196,.2);}
-  .intent-card.conflict{border-color:rgba(255,107,107,.35);}
   .ic-h{display:flex;align-items:center;gap:6px;padding:6px 8px;font-family:var(--mono);font-size:9px;}
   .ic-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
   .ic-dot.reactive{background:var(--ok);}
@@ -118,21 +110,19 @@
   .ic-tag{font-size:8px;padding:1px 5px;border-radius:2px;}
   .ic-body{padding:5px 8px;background:rgba(0,0,0,.25);border-top:1px solid var(--border);
             font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.7;
-            max-height:120px;overflow-y:auto;}
+            max-height:110px;overflow-y:auto;}
   .ic-expr{color:var(--accent2);}
   .ic-actions{display:flex;gap:3px;margin-top:4px;}
-  .ic-btn{font-family:var(--mono);font-size:8px;padding:2px 6px;border-radius:2px;cursor:pointer;}
-  .ic-btn.rc{background:rgba(247,183,49,.08);border:1px solid rgba(247,183,49,.25);color:var(--gold);}
-  .ic-btn.rm{background:rgba(255,107,107,.06);border:1px solid rgba(255,107,107,.2);color:var(--warn);}
+  .ic-btn{font-family:var(--mono);font-size:8px;padding:2px 6px;border-radius:2px;cursor:pointer;border:1px solid;}
+  .ic-btn.rc{background:rgba(247,183,49,.08);border-color:rgba(247,183,49,.25);color:var(--gold);}
+  .ic-btn.rm{background:rgba(255,107,107,.06);border-color:rgba(255,107,107,.2);color:var(--warn);}
 
-  /* ── Log ── */
+  /* Log */
   .log-box{font-family:var(--mono);font-size:9px;color:var(--dim);
-            background:rgba(0,0,0,.3);padding:8px 12px;max-height:90px;
+            background:rgba(0,0,0,.3);padding:8px 12px;max-height:110px;
             overflow-y:auto;white-space:pre-wrap;line-height:1.6;flex-shrink:0;}
-
-  /* ── No selection ── */
   .no-sel{font-family:var(--mono);font-size:10px;color:var(--dim);
-           text-align:center;padding:16px 12px;line-height:1.8;}
+           text-align:center;padding:14px 12px;line-height:1.8;}
 
   ::-webkit-scrollbar{width:3px;}
   ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
@@ -140,10 +130,10 @@
 </head>
 <body>
 
-<!-- ══ LEFT PANEL ══ -->
+<!-- ══ LEFT ══ -->
 <div class="panel panel-l">
   <div class="ph">Elements</div>
-  <div id="elList" style="padding:0 6px 6px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;flex-shrink:0;max-height:220px;"></div>
+  <div id="elList" style="padding:0 6px 4px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;max-height:230px;flex-shrink:0;"></div>
 
   <div class="ph d">Add</div>
   <div class="add-row">
@@ -154,26 +144,14 @@
   </div>
 
   <div class="ph d">Live Signals</div>
-  <div id="sigMon" style="display:flex;flex-direction:column;padding-bottom:6px;"></div>
+  <div id="sigMon" style="flex-shrink:0;padding-bottom:4px;"></div>
 
   <div class="ph d">Constraint Graph</div>
-  <div style="padding:8px 12px 12px;font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.9;flex-shrink:0;">
-    <div style="display:flex;align-items:center;gap:7px;">
-      <svg width="20" height="6"><line x1="0" y1="3" x2="20" y2="3" stroke="#50e890" stroke-width="1.5"/></svg>
-      <span style="color:var(--ok)">reactive</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:7px;">
-      <svg width="20" height="6"><line x1="0" y1="3" x2="20" y2="3" stroke="#f7b731" stroke-width="1.5" stroke-dasharray="4,2"/></svg>
-      <span style="color:var(--gold)">directional</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:7px;">
-      <svg width="20" height="6"><line x1="0" y1="3" x2="20" y2="3" stroke="#4ecdc4" stroke-width="1.5" stroke-dasharray="1,2"/></svg>
-      <span style="color:var(--accent2)">measure</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:7px;">
-      <svg width="20" height="6"><line x1="0" y1="3" x2="20" y2="3" stroke="#7eb8ff" stroke-width="1.5" stroke-dasharray="5,2"/></svg>
-      <span style="color:var(--accent)">signal</span>
-    </div>
+  <div style="padding:8px 12px 12px;font-family:var(--mono);font-size:9px;color:var(--dim);line-height:2;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:8px;"><svg width="20" height="6"><line x1="0" y1="3" x2="20" y2="3" stroke="#50e890" stroke-width="1.5"/></svg><span style="color:var(--ok)">reactive</span></div>
+    <div style="display:flex;align-items:center;gap:8px;"><svg width="20" height="6"><line x1="0" y1="3" x2="20" y2="3" stroke="#f7b731" stroke-width="1.5" stroke-dasharray="4,2"/></svg><span style="color:var(--gold)">directional</span></div>
+    <div style="display:flex;align-items:center;gap:8px;"><svg width="20" height="6"><line x1="0" y1="3" x2="20" y2="3" stroke="#4ecdc4" stroke-width="1.5" stroke-dasharray="1,2"/></svg><span style="color:var(--accent2)">measure</span></div>
+    <div style="display:flex;align-items:center;gap:8px;"><svg width="20" height="6"><line x1="0" y1="3" x2="20" y2="3" stroke="#7eb8ff" stroke-width="1.5" stroke-dasharray="5,2"/></svg><span style="color:var(--accent)">signal</span></div>
   </div>
 </div>
 
@@ -188,7 +166,7 @@
     <span style="margin-left:auto;font-size:9px;" id="fpsEl">— fps</span>
   </div>
   <div class="canvas-stage" id="stage">
-    <div class="canvas-wrap-inner" id="cwi">
+    <div class="cwi" id="cwi">
       <canvas id="c" width="960" height="540"></canvas>
       <svg id="overlay" viewBox="0 0 960 540" preserveAspectRatio="none">
         <defs>
@@ -205,40 +183,29 @@
   </div>
 </div>
 
-<!-- ══ RIGHT PANEL ══ -->
+<!-- ══ RIGHT ══ -->
 <div class="panel panel-r">
-  <!-- API Key -->
   <div class="ph d">API Key</div>
   <div style="padding:0 12px 10px;flex-shrink:0;">
     <input id="apiKey" type="password" placeholder="sk-ant-…"
-      style="width:100%;font-family:var(--mono);font-size:10px;background:var(--bg);border:1px solid var(--border);
-             color:var(--text);padding:6px 9px;border-radius:4px;outline:none;"/>
+      style="width:100%;font-family:var(--mono);font-size:10px;background:var(--bg);
+             border:1px solid var(--border);color:var(--text);padding:6px 9px;border-radius:4px;outline:none;"/>
     <div id="keyStatus" style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:3px;">Enter key</div>
   </div>
 
-  <!-- Inspector -->
   <div class="ph g">Inspector</div>
-  <div id="inspector">
-    <div class="no-sel">Click any element<br>to select and inspect</div>
-  </div>
+  <div id="inspector"><div class="no-sel">Click any element to inspect</div></div>
 
-  <!-- AI -->
   <div class="ph v">Ask Claude</div>
-  <div class="ai-wrap">
+  <div class="chat-area">
     <textarea class="ai-input" id="aiInput"
-      placeholder="Select an element, then type…&#10;&#10;Execute  →  one-time action&#10;  "move title to center"  "make it blue"&#10;  "build a earnings slide for Smarthi Corp"&#10;&#10;Intent  →  living relationship&#10;  "always 16px below the title"&#10;  "follow the mouse"  "match title text width""></textarea>
-    <div class="ai-actions">
-      <button class="ai-btn cmd" id="cmdBtn" disabled>Execute ▶</button>
-      <button class="ai-btn intent" id="intentBtn" disabled>Compile Intent ◈</button>
-    </div>
-    <div class="ai-hint">Cmd+Enter → Execute · Shift+Enter → Intent</div>
+      placeholder="What do you want?&#10;&#10;Claude decides what to do.&#10;&#10;"make a Smarthi Corp earnings slide"&#10;"dot follows the mouse"&#10;"subtitle always below the title"&#10;"add a red circle in the top right""></textarea>
+    <button class="send-btn" id="sendBtn" disabled>Ask ▶</button>
   </div>
 
-  <!-- Active Intents -->
   <div class="ph v">Active Intents</div>
-  <div id="intentList" style="overflow-y:auto;flex:1;padding-bottom:6px;"></div>
+  <div id="intentList" style="overflow-y:auto;flex:1;padding-bottom:4px;min-height:40px;"></div>
 
-  <!-- Log -->
   <div class="ph d">Log</div>
   <div class="log-box" id="logBox">Ready.</div>
 </div>
@@ -275,7 +242,7 @@ class SpatialFlowLive extends SpatialFlowEngine {
       this._tick();
     });
   }
-  updateMouse(x, y) { this._sigs.mouse = {x, y}; }
+  setMouse(x, y) { this._sigs.mouse = {x, y}; }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -308,43 +275,127 @@ const INITIAL_SPEC = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// System Prompts
+// Tool definitions — exposed to Claude
 // ═══════════════════════════════════════════════════════════════════════════
-const CMD_PROMPT = `You control a SpatialFlow layout engine (960×540 canvas). Execute the user's instruction as engine commands.
+const TOOLS = [
+  {
+    name: 'get_state',
+    description: 'Get current state of all canvas elements: their positions, sizes, measured bounds, and active constraints. Call this to understand the layout before making decisions.',
+    input_schema: { type:'object', properties:{}, required:[] }
+  },
+  {
+    name: 'add_element',
+    description: 'Add a new element to the canvas. Choose sensible initial positions and colors that fit the dark theme.',
+    input_schema: {
+      type:'object',
+      properties: {
+        id:{type:'string'}, type:{type:'string', enum:['rectangle','circle','text','text_box']},
+        x:{type:'number'}, y:{type:'number'},
+        width:{type:'number'}, height:{type:'number'}, radius:{type:'number'},
+        fill:{type:'string'}, stroke:{type:'string'}, stroke_width:{type:'number'},
+        content:{type:'string'}, font:{type:'string'}, color:{type:'string'}
+      },
+      required:['id','type','x','y']
+    }
+  },
+  {
+    name: 'update_element',
+    description: 'Update properties of an existing element (content, color, position, size, font, etc.)',
+    input_schema: {
+      type:'object',
+      properties: {
+        elementId:{type:'string'},
+        props:{type:'object', description:'Properties to update: x, y, width, height, radius, fill, stroke, content, font, color'}
+      },
+      required:['elementId','props']
+    }
+  },
+  {
+    name: 'remove_element',
+    description: 'Remove an element from the canvas. Never remove "bg".',
+    input_schema: { type:'object', properties:{ elementId:{type:'string'} }, required:['elementId'] }
+  },
+  {
+    name: 'set_constraint',
+    description: 'Set a reactive constraint expression on an element. The expression re-evaluates every frame using live measurements. Use for: positioning relative to other elements, signal-driven layout, centering, tracking.',
+    input_schema: {
+      type:'object',
+      properties: {
+        target:{type:'string', description:'Element ID'},
+        x:{type:'string', description:'Expression for x — e.g. "title.bounds.left" or "mouse.x"'},
+        y:{type:'string', description:'Expression for y — e.g. "title.bounds.bottom + 16"'},
+        width:{type:'string', description:'Expression for width — e.g. "title.actualWidth"'},
+        height:{type:'string'}
+      },
+      required:['target']
+    }
+  },
+  {
+    name: 'remove_constraint',
+    description: 'Remove the constraint from an element, reverting it to its base position.',
+    input_schema: { type:'object', properties:{ elementId:{type:'string'} }, required:['elementId'] }
+  },
+  {
+    name: 'store_intent',
+    description: 'Compile a natural language spatial relationship and store it as a named living constraint. Use when the user wants an ONGOING relationship ("always below", "follows mouse", "matches width"). You write both the human description AND the compiled constraint expressions.',
+    input_schema: {
+      type:'object',
+      properties: {
+        natural:{type:'string', description:'Human-readable description of the relationship'},
+        constraints:{
+          type:'array',
+          items:{
+            type:'object',
+            properties:{
+              target:{type:'string'}, prop:{type:'string', enum:['x','y','width','height']},
+              expr:{type:'string'}, explanation:{type:'string'},
+              type:{type:'string', enum:['reactive','directional','measure']},
+              deps:{type:'array', items:{type:'string'}}
+            },
+            required:['target','prop','expr','type','deps']
+          }
+        }
+      },
+      required:['natural','constraints']
+    }
+  },
+  {
+    name: 'add_animation',
+    description: 'Animate an element property with keyframes. Keyframe time is in milliseconds (0–8000).',
+    input_schema: {
+      type:'object',
+      properties: {
+        target:{type:'string'}, property:{type:'string', enum:['x','y','width','height','radius']},
+        keyframes:{type:'array', items:{type:'object', properties:{time:{type:'number'},value:{type:'number'}}, required:['time','value']}},
+        easing:{type:'string', enum:['linear','ease_out','ease_in','ease_in_out','ease_out_cubic']}
+      },
+      required:['target','property','keyframes']
+    }
+  }
+];
 
-ELEMENT REFS: {id}.x, {id}.y, {id}.width, {id}.height, {id}.bounds.left/right/top/bottom, {id}.centerX, {id}.centerY, {id}.actualWidth
-SLIDE: slide.width=960, slide.height=540, slide.centerX=480, slide.centerY=270
-SIGNALS: mouse.x, mouse.y, time.ms, time.norm
-MATH: sin, cos, clamp(x,a,b), lerp(a,b,t), abs, min, max, sqrt
+const SYSTEM_PROMPT = `You control SpatialFlow, a reactive constraint layout engine on a 960×540 canvas.
 
-COMMANDS — output ONLY a raw JSON array:
-[
-  {"type":"add_element","element":{"id":"...","type":"rectangle|circle|text|text_box","x":0,"y":0,"width":100,"height":60,"fill":"#hex","content":"...","font":"16px DM Sans","color":"#hex","radius":20}},
-  {"type":"remove_element","elementId":"..."},
-  {"type":"update_element","elementId":"...","props":{"fill":"#hex","content":"...","x":0}},
-  {"type":"add_constraint","constraint":{"target":"...","x":"expr","y":"expr","width":"expr","height":"expr"}},
-  {"type":"remove_constraint","elementId":"..."},
-  {"type":"add_animation","animation":{"target":"...","property":"x|y|width|height|radius","keyframes":[{"time":0,"value":0},{"time":2000,"value":100}],"easing":"ease_out"}}
-]
+CONSTRAINT EXPRESSION SYNTAX (use in set_constraint and store_intent):
+- Element refs: {id}.x  {id}.y  {id}.width  {id}.height  {id}.bounds.left/right/top/bottom  {id}.centerX  {id}.centerY  {id}.actualWidth
+- Slide: slide.width=960  slide.height=540  slide.centerX=480  slide.centerY=270
+- Live signals: mouse.x  mouse.y  time.ms(0-8000)  time.norm(0-1)
+- Math: sin cos sqrt clamp(x,a,b) lerp(a,b,t) abs min max
+- Ternary: condition ? value_a : value_b
 
-RULES: Raw JSON array only. No prose. Never touch the "bg" element. "bg" overlaps are not violations.`;
+WHEN TO USE EACH TOOL:
+• get_state — call first when you need to see current layout before deciding
+• add_element / update_element / remove_element — create/modify/delete elements
+• set_constraint — reactive expression on one element (engine-level, unnamed)
+• store_intent — ongoing named relationship the user described ("always below", "follows mouse") — you compile it yourself
+• add_animation — keyframe animation
 
-const INTENT_PROMPT = `You are a SpatialFlow semantic constraint compiler. Convert a natural language spatial relationship into reactive constraint expressions.
-
-ELEMENT REFS: {id}.x, {id}.y, {id}.width, {id}.height, {id}.bounds.left/right/top/bottom, {id}.centerX, {id}.centerY, {id}.actualWidth
-SLIDE: slide.width=960, slide.height=540, slide.centerX=480, slide.centerY=270
-SIGNALS: mouse.x, mouse.y, time.ms, time.norm
-MATH: sin, cos, clamp, lerp, abs, min, max — TERNARY OK: cond ? a : b
-
-TYPE: "reactive" = re-evaluates every frame, never stale | "directional" = depends on current layout direction, may go stale | "measure" = driven by rendered measurements
-
-Output ONLY a raw JSON array:
-[{"target":"id","prop":"x|y|width|height","expr":"expression","explanation":"one line","type":"reactive|directional|measure","deps":["ids"]}]
-
-EXAMPLES:
-"subtitle always 16px below title" → [{"target":"subtitle","prop":"y","expr":"title.bounds.bottom + 16","explanation":"subtitle locked below title","type":"reactive","deps":["title"]}]
-"dot follows mouse" → [{"target":"dot","prop":"x","expr":"mouse.x","explanation":"dot x tracks mouse","type":"reactive","deps":[]},{"target":"dot","prop":"y","expr":"mouse.y","explanation":"dot y tracks mouse","type":"reactive","deps":[]}]
-"accent bar matches title text width" → [{"target":"accent","prop":"width","expr":"title.actualWidth","explanation":"accent tracks title text width","type":"measure","deps":["title"]}]`;
+RULES:
+- Never remove or modify "bg" (full-slide background)
+- Dark theme palette: fills #111119–#1e1030, text #e8e8f8, accents #7eb8ff #4ecdc4 #c084fc #50e890 #f7b731
+- Fonts: "DM Sans" for text, "JetBrains Mono" for code/data/labels
+- Call multiple tools per turn — chain get_state → updates → constraints as needed
+- After finishing, write a short plain-English summary of what you did`;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // State
@@ -353,15 +404,13 @@ const intents = [];
 let intentN = 0, newElN = 0;
 let selectedId = null, dragState = null, lastState = null;
 const highlights = {};
-
-const EL_COLORS = {rectangle:'#7eb8ff',circle:'#ff6b6b',text:'#50e890',text_box:'#4ecdc4',
-                    image:'#f7b731',frame:'#c084fc',line:'#aaa',connector:'#aaa'};
+const EL_COLORS  = {rectangle:'#7eb8ff',circle:'#ff6b6b',text:'#50e890',text_box:'#4ecdc4',image:'#f7b731',frame:'#c084fc',line:'#aaa',connector:'#aaa'};
 const TYPE_COLORS = {reactive:'#50e890',directional:'#f7b731',measure:'#4ecdc4'};
 const TYPE_DASHES = {reactive:'none',directional:'5,3',measure:'2,3'};
-const TYPE_MARKERS = {reactive:'m-ok',directional:'m-dir',measure:'m-mea'};
+const TYPE_MK     = {reactive:'m-ok',directional:'m-dir',measure:'m-mea'};
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Canvas setup — declared first so event listeners can reference them
+// Canvas — declared before event listeners
 // ═══════════════════════════════════════════════════════════════════════════
 const canvas = document.getElementById('c');
 const cwi    = document.getElementById('cwi');
@@ -369,10 +418,10 @@ const stage  = document.getElementById('stage');
 
 function fitCanvas() {
   const sw = stage.clientWidth, sh = stage.clientHeight;
-  const scale = Math.min(sw / 960, sh / 540, 1);
-  const w = 960 * scale, h = 540 * scale;
-  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
-  cwi.style.width = w + 'px'; cwi.style.height = h + 'px';
+  const scale = Math.min(sw/960, sh/540, 1);
+  const w = 960*scale, h = 540*scale;
+  canvas.style.width = w+'px'; canvas.style.height = h+'px';
+  cwi.style.width = w+'px'; cwi.style.height = h+'px';
 }
 fitCanvas();
 window.addEventListener('resize', fitCanvas);
@@ -380,7 +429,7 @@ new ResizeObserver(fitCanvas).observe(stage);
 
 function canvasCoords(e) {
   const r = canvas.getBoundingClientRect();
-  return { x: (e.clientX - r.left) * (960 / r.width), y: (e.clientY - r.top) * (540 / r.height) };
+  return {x:(e.clientX-r.left)*(960/r.width), y:(e.clientY-r.top)*(540/r.height)};
 }
 
 function hitTest(cx, cy) {
@@ -390,153 +439,122 @@ function hitTest(cx, cy) {
     if (el.id === 'bg') continue;
     const m = lastState.measurements[el.id];
     if (!m) continue;
-    if (el.type === 'circle') {
-      const dx = cx - m.x, dy = cy - m.y;
-      if (dx*dx + dy*dy <= (el.radius||0)**2) return el.id;
-    } else if (m.bounds) {
-      const b = m.bounds;
-      if (cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom) return el.id;
-    }
+    if (el.type === 'circle') { const dx=cx-m.x,dy=cy-m.y; if(dx*dx+dy*dy<=(el.radius||0)**2) return el.id; }
+    else if (m.bounds) { const b=m.bounds; if(cx>=b.left&&cx<=b.right&&cy>=b.top&&cy<=b.bottom) return el.id; }
   }
   return null;
 }
 
-// Mouse events
 canvas.addEventListener('mousemove', e => {
-  const {x, y} = canvasCoords(e);
-  live.updateMouse(x, y);
+  const {x,y} = canvasCoords(e);
+  live.setMouse(x, y);
   if (!dragState) {
-    const hit = hitTest(x, y);
-    canvas.className = hit ? 'hover' : '';
+    canvas.className = hitTest(x,y) ? 'hover' : '';
   } else {
-    const dx = x - dragState.sm.x, dy = y - dragState.sm.y;
-    live.executeCommand({ type:'update_element', elementId: dragState.id,
-      props: { x: Math.round(dragState.sp.x + dx), y: Math.round(dragState.sp.y + dy) } });
+    const dx=x-dragState.sm.x, dy=y-dragState.sm.y;
+    live.executeCommand({type:'update_element', elementId:dragState.id,
+      props:{x:Math.round(dragState.sp.x+dx), y:Math.round(dragState.sp.y+dy)}});
   }
 });
-
 canvas.addEventListener('mousedown', e => {
-  if (e.button !== 0) return;
-  const {x, y} = canvasCoords(e);
-  const hit = hitTest(x, y);
-  selectElement(hit);
-  if (hit) {
-    const m = lastState?.measurements[hit];
-    dragState = { id:hit, sm:{x,y}, sp:{x:m?.x||0, y:m?.y||0} };
-    canvas.className = 'drag';
-  }
+  if (e.button!==0) return;
+  const {x,y} = canvasCoords(e);
+  const hit = hitTest(x,y);
+  selectEl(hit);
+  if (hit) { const m=lastState?.measurements[hit]; dragState={id:hit,sm:{x,y},sp:{x:m?.x||0,y:m?.y||0}}; canvas.className='drag'; }
 });
-
-canvas.addEventListener('mouseup', () => {
-  dragState = null;
-  canvas.className = '';
-  renderInspector();
-});
-canvas.addEventListener('mouseleave', () => { dragState = null; canvas.className = ''; });
+canvas.addEventListener('mouseup', () => { dragState=null; canvas.className=''; renderInspector(); });
+canvas.addEventListener('mouseleave', () => { dragState=null; canvas.className=''; });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SVG Overlay
 // ═══════════════════════════════════════════════════════════════════════════
 function updateArrows(state) {
   const layer = document.getElementById('arrowLayer');
-  if (!layer || !state) return;
+  if (!layer||!state) return;
   layer.innerHTML = '';
   for (const intent of intents) {
     for (const c of intent.compiled) {
-      for (const dep of (c.deps?.length ? c.deps : intent.deps)) {
-        const fm = state.measurements[dep], tm = state.measurements[c.target];
-        if (!fm || !tm) continue;
-        const x1 = fm.centerX || 0, y1 = fm.centerY || 0;
-        const x2 = tm.centerX || 0, y2 = tm.centerY || 0;
-        if (Math.abs(x1-x2) < 4 && Math.abs(y1-y2) < 4) continue;
-        const color = TYPE_COLORS[intent.type] || '#7eb8ff';
-        const dash  = TYPE_DASHES[intent.type] || 'none';
-        const mk    = TYPE_MARKERS[intent.type] || 'm-ok';
-        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-        line.setAttribute('x1',x1); line.setAttribute('y1',y1);
-        line.setAttribute('x2',x2); line.setAttribute('y2',y2);
-        line.setAttribute('stroke',color); line.setAttribute('stroke-width','1.5');
-        line.setAttribute('stroke-opacity','0.5'); line.setAttribute('stroke-dasharray',dash);
-        line.setAttribute('marker-end',`url(#${mk})`);
+      for (const dep of (c.deps?.length?c.deps:intent.deps)) {
+        const fm=state.measurements[dep], tm=state.measurements[c.target];
+        if (!fm||!tm) continue;
+        const x1=fm.centerX||0,y1=fm.centerY||0,x2=tm.centerX||0,y2=tm.centerY||0;
+        if (Math.abs(x1-x2)<4&&Math.abs(y1-y2)<4) continue;
+        const color=TYPE_COLORS[intent.type]||'#7eb8ff';
+        const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1',x1);line.setAttribute('y1',y1);line.setAttribute('x2',x2);line.setAttribute('y2',y2);
+        line.setAttribute('stroke',color);line.setAttribute('stroke-width','1.5');
+        line.setAttribute('stroke-opacity','0.5');line.setAttribute('stroke-dasharray',TYPE_DASHES[intent.type]||'none');
+        line.setAttribute('marker-end',`url(#${TYPE_MK[intent.type]||'m-ok'})`);
         layer.appendChild(line);
-        // prop label at midpoint
-        const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
-        lbl.setAttribute('x',(x1+x2)/2); lbl.setAttribute('y',(y1+y2)/2-4);
-        lbl.setAttribute('font-family','JetBrains Mono,monospace'); lbl.setAttribute('font-size','8');
-        lbl.setAttribute('fill',color); lbl.setAttribute('fill-opacity','0.6');
-        lbl.setAttribute('text-anchor','middle');
-        lbl.textContent = `.${c.prop}`;
+        const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+        lbl.setAttribute('x',(x1+x2)/2);lbl.setAttribute('y',(y1+y2)/2-4);
+        lbl.setAttribute('font-family','JetBrains Mono,monospace');lbl.setAttribute('font-size','8');
+        lbl.setAttribute('fill',color);lbl.setAttribute('fill-opacity','0.6');lbl.setAttribute('text-anchor','middle');
+        lbl.textContent=`.${c.prop}`;
         layer.appendChild(lbl);
       }
     }
   }
 }
 
-function updateSelection(state) {
-  const layer = document.getElementById('selLayer');
-  const hl    = document.getElementById('hlLayer');
-  layer.innerHTML = '';
-  // Selection ring
-  if (selectedId && state) {
-    const m = state.measurements[selectedId];
+function updateSel(state) {
+  document.getElementById('selLayer').innerHTML='';
+  document.getElementById('hlLayer').innerHTML='';
+  const selLayer=document.getElementById('selLayer');
+  const hlLayer=document.getElementById('hlLayer');
+
+  if (selectedId&&state) {
+    const m=state.measurements[selectedId];
     if (m?.bounds) {
-      const b = m.bounds, p = 5;
-      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-      rect.setAttribute('x',b.left-p); rect.setAttribute('y',b.top-p);
-      rect.setAttribute('width',b.right-b.left+p*2); rect.setAttribute('height',b.bottom-b.top+p*2);
-      rect.setAttribute('fill','none'); rect.setAttribute('stroke','#c084fc');
-      rect.setAttribute('stroke-width','1.5'); rect.setAttribute('stroke-dasharray','4,3');
-      rect.setAttribute('rx','3');
-      layer.appendChild(rect);
-      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
-      lbl.setAttribute('x',b.left-p); lbl.setAttribute('y',b.top-p-4);
-      lbl.setAttribute('font-family','JetBrains Mono,monospace'); lbl.setAttribute('font-size','9');
-      lbl.setAttribute('fill','#c084fc');
-      lbl.textContent = selectedId;
-      layer.appendChild(lbl);
+      const b=m.bounds,p=5;
+      const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x',b.left-p);rect.setAttribute('y',b.top-p);
+      rect.setAttribute('width',b.right-b.left+p*2);rect.setAttribute('height',b.bottom-b.top+p*2);
+      rect.setAttribute('fill','none');rect.setAttribute('stroke','#c084fc');
+      rect.setAttribute('stroke-width','1.5');rect.setAttribute('stroke-dasharray','4,3');rect.setAttribute('rx','3');
+      selLayer.appendChild(rect);
+      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('x',b.left-p);lbl.setAttribute('y',b.top-p-4);
+      lbl.setAttribute('font-family','JetBrains Mono,monospace');lbl.setAttribute('font-size','9');lbl.setAttribute('fill','#c084fc');
+      lbl.textContent=selectedId; selLayer.appendChild(lbl);
     }
   }
-  // Highlights
-  hl.innerHTML = '';
-  for (const [id, h] of Object.entries(highlights)) {
-    if (h.frames <= 0) { delete highlights[id]; continue; }
-    const m = state?.measurements[id];
-    if (m?.bounds) {
-      const alpha = Math.min(h.frames / 60, 1);
-      const b = m.bounds, p = 6;
-      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-      rect.setAttribute('x',b.left-p); rect.setAttribute('y',b.top-p);
-      rect.setAttribute('width',b.right-b.left+p*2); rect.setAttribute('height',b.bottom-b.top+p*2);
-      rect.setAttribute('fill','none'); rect.setAttribute('stroke',`rgba(192,132,252,${alpha})`);
-      rect.setAttribute('stroke-width','2'); rect.setAttribute('filter',`drop-shadow(0 0 6px rgba(192,132,252,${alpha*0.6}))`);
-      rect.setAttribute('rx','3');
-      hl.appendChild(rect);
+  for (const [id,h] of Object.entries(highlights)) {
+    if (h.frames<=0){delete highlights[id];continue;}
+    const m=state?.measurements[id];
+    if (m?.bounds){
+      const alpha=Math.min(h.frames/60,1),b=m.bounds,p=6;
+      const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x',b.left-p);rect.setAttribute('y',b.top-p);
+      rect.setAttribute('width',b.right-b.left+p*2);rect.setAttribute('height',b.bottom-b.top+p*2);
+      rect.setAttribute('fill','none');rect.setAttribute('stroke',`rgba(192,132,252,${alpha})`);
+      rect.setAttribute('stroke-width','2');rect.setAttribute('rx','3');
+      hlLayer.appendChild(rect);
     }
     h.frames--;
   }
 }
 
-function flash(ids) { ids.forEach(id => { highlights[id] = {frames: 90}; }); }
+function flash(ids) { (ids||[]).forEach(id=>{highlights[id]={frames:90};}); }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UI rendering
+// UI
 // ═══════════════════════════════════════════════════════════════════════════
-function selectElement(id) {
-  selectedId = id;
-  const hasKey = !!document.getElementById('apiKey').value.trim();
-  document.getElementById('cmdBtn').disabled    = !id || !hasKey;
-  document.getElementById('intentBtn').disabled = !id || !hasKey;
-  document.getElementById('selBadge').textContent = id ? id : 'nothing selected';
-  renderElList();
-  renderInspector();
+function selectEl(id) {
+  selectedId=id;
+  const hasKey=!!document.getElementById('apiKey').value.trim();
+  document.getElementById('sendBtn').disabled=!hasKey;
+  document.getElementById('selBadge').textContent=id?id:'nothing selected';
+  renderElList(); renderInspector();
 }
 
 function renderElList() {
-  const box = document.getElementById('elList');
-  const constrained = new Set((live.spec.constraints||[]).map(c => c.target));
-  box.innerHTML = live.spec.elements.filter(e => e.id !== 'bg').map(el => `
+  const box=document.getElementById('elList');
+  const constrained=new Set((live.spec.constraints||[]).map(c=>c.target));
+  box.innerHTML=live.spec.elements.filter(e=>e.id!=='bg').map(el=>`
     <div class="el-item ${selectedId===el.id?'sel':''} ${constrained.has(el.id)?'constrained':''}"
-         onclick="selectElement('${el.id}')">
+         onclick="selectEl('${el.id}')">
       <div class="el-dot" style="background:${EL_COLORS[el.type]||'#666'}"></div>
       <span>${el.id}</span>
       <div class="el-constrained"></div>
@@ -545,304 +563,264 @@ function renderElList() {
 }
 
 function renderInspector() {
-  const box = document.getElementById('inspector');
-  if (!selectedId || !lastState) {
-    box.innerHTML = '<div class="no-sel">Click any element<br>to select and inspect</div>';
-    return;
-  }
-  const el = live.spec.elements.find(e => e.id === selectedId);
-  const m  = lastState.measurements[selectedId];
-  if (!el || !m) { box.innerHTML = '<div class="no-sel">No data</div>'; return; }
-
-  const props = [['type',el.type],['x',Math.round(m.x||0)],['y',Math.round(m.y||0)],
+  const box=document.getElementById('inspector');
+  if (!selectedId||!lastState){box.innerHTML='<div class="no-sel">Click any element to inspect</div>';return;}
+  const el=live.spec.elements.find(e=>e.id===selectedId);
+  const m=lastState.measurements[selectedId];
+  if (!el||!m){box.innerHTML='<div class="no-sel">No data</div>';return;}
+  const props=[['type',el.type],['x',Math.round(m.x||0)],['y',Math.round(m.y||0)],
     ['width',Math.round(m.width||0)],['height',Math.round(m.height||0)],
     ['centerX',Math.round(m.centerX||0)],['centerY',Math.round(m.centerY||0)]];
-  if (m.actualWidth) props.push(['actualWidth', Math.round(m.actualWidth)]);
-
-  const cs = (live.spec.constraints||[]).filter(c => c.target === selectedId);
-  const propRows = props.map(([k,v]) =>
-    `<div class="prop-row"><span class="pn">${k}</span><span class="pv">${v}</span></div>`).join('');
-  const cRows = cs.length ? cs.map(c =>
-    ['x','y','width','height'].filter(p => c[p]).map(p =>
-      `<div class="c-row"><span class="c-prop">${p} = </span><span class="c-expr">${c[p]}</span></div>`
-    ).join('')).join('') : '';
-
-  box.innerHTML = propRows + cRows;
+  if (m.actualWidth) props.push(['actualWidth',Math.round(m.actualWidth)]);
+  const cs=(live.spec.constraints||[]).filter(c=>c.target===selectedId);
+  box.innerHTML=props.map(([k,v])=>`<div class="prop-row"><span class="pn">${k}</span><span class="pv">${v}</span></div>`).join('')
+    + cs.map(c=>['x','y','width','height'].filter(p=>c[p]).map(p=>`<div class="c-row"><span class="c-prop">${p} = </span><span class="c-expr">${c[p]}</span></div>`).join('')).join('');
 }
 
 function renderIntentList() {
-  const box = document.getElementById('intentList');
-  document.getElementById('iBadge').textContent = `${intents.length} intent${intents.length!==1?'s':''}`;
-  if (!intents.length) {
-    box.innerHTML = '<div class="no-sel" style="padding:10px 12px;">No intents yet.</div>';
-    return;
-  }
-  // Refresh conflict state
-  const propOwners = {};
-  for (const i of intents) for (const c of i.compiled) {
-    const k = `${c.target}.${c.prop}`;
-    if (!propOwners[k]) propOwners[k] = [];
-    propOwners[k].push(i.id);
-  }
-  for (const i of intents) {
-    i.hasConflict = i.compiled.some(c => (propOwners[`${c.target}.${c.prop}`]||[]).length > 1);
-  }
-
-  box.innerHTML = intents.map(i => {
-    const cls = i.hasConflict ? 'conflict' : i.type;
-    const dotCls = i.hasConflict ? 'directional' : i.type;
-    const exprLines = i.compiled.map(c =>
-      `<div><span class="c-prop">${c.target}.${c.prop} = </span><span class="ic-expr">${c.expr}</span></div>`
-    ).join('');
-    return `
-    <div class="intent-card ${cls}">
+  const box=document.getElementById('intentList');
+  document.getElementById('iBadge').textContent=`${intents.length} intent${intents.length!==1?'s':''}`;
+  if (!intents.length){box.innerHTML='<div class="no-sel" style="padding:10px 12px;">No intents yet.</div>';return;}
+  box.innerHTML=intents.map(i=>`
+    <div class="intent-card ${i.type}">
       <div class="ic-h">
-        <div class="ic-dot ${dotCls}"></div>
-        <span class="ic-natural">${i.natural.slice(0,45)}${i.natural.length>45?'…':''}</span>
+        <div class="ic-dot ${i.type}"></div>
+        <span class="ic-natural">${i.natural.slice(0,48)}${i.natural.length>48?'…':''}</span>
         <span class="ic-tag" style="background:${TYPE_COLORS[i.type]||'var(--dim)'}22;color:${TYPE_COLORS[i.type]||'var(--dim)'}">${i.type}</span>
       </div>
       <div class="ic-body">
-        ${exprLines}
+        ${i.compiled.map(c=>`<div><span class="c-prop">${c.target}.${c.prop} = </span><span class="ic-expr">${c.expr}</span></div>`).join('')}
         <div style="color:var(--dim);margin-top:2px;">deps: [${i.deps.join(', ')||'—'}]</div>
         <div class="ic-actions">
-          ${i.type==='directional'||i.stale ? `<button class="ic-btn rc" onclick="recompileIntent('${i.id}')">⟳ re-compile</button>` : ''}
+          ${i.type==='directional'?`<button class="ic-btn rc" onclick="recompileIntent('${i.id}')">⟳ re-compile</button>`:''}
           <button class="ic-btn rm" onclick="removeIntent('${i.id}')">✕</button>
         </div>
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Agent calls
+// Tool execution — called by agent loop
 // ═══════════════════════════════════════════════════════════════════════════
 function getCtx() {
-  const m = live.evaluate(0, {}).measurements;
-  return live.spec.elements.map(el => {
-    const em = m[el.id]||{};
-    return { id:el.id, type:el.type,
-      x:Math.round(em.x||0), y:Math.round(em.y||0),
-      width:Math.round(em.width||0), height:Math.round(em.height||0),
-      bounds: em.bounds ? {left:Math.round(em.bounds.left),right:Math.round(em.bounds.right),
-        top:Math.round(em.bounds.top),bottom:Math.round(em.bounds.bottom)} : undefined,
-      centerX:Math.round(em.centerX||0), centerY:Math.round(em.centerY||0),
-      actualWidth:Math.round(em.actualWidth||em.width||0)
+  const m=live.evaluate(0,{}).measurements;
+  return live.spec.elements.map(el=>{
+    const em=m[el.id]||{};
+    return {id:el.id,type:el.type,
+      x:Math.round(em.x||0),y:Math.round(em.y||0),
+      width:Math.round(em.width||0),height:Math.round(em.height||0),
+      bounds:em.bounds?{left:Math.round(em.bounds.left),right:Math.round(em.bounds.right),
+        top:Math.round(em.bounds.top),bottom:Math.round(em.bounds.bottom)}:undefined,
+      centerX:Math.round(em.centerX||0),centerY:Math.round(em.centerY||0),
+      actualWidth:Math.round(em.actualWidth||em.width||0),
+      constraints:(live.spec.constraints||[]).filter(c=>c.target===el.id)
     };
   });
 }
 
-async function callClaude(systemPrompt, userMsg) {
+function executeTool(name, input) {
+  log(`🔧 ${name}${input.elementId?' → '+input.elementId:input.target?' → '+input.target:input.id?' → '+input.id:''}`);
+  try {
+    switch (name) {
+      case 'get_state':
+        return {elements: getCtx(), constraints: live.spec.constraints||[], slide:{width:960,height:540}};
+
+      case 'add_element': {
+        const r = live.executeCommand({type:'add_element', element:input});
+        flash([input.id]);
+        renderElList();
+        return r;
+      }
+      case 'update_element': {
+        const r = live.executeCommand({type:'update_element', elementId:input.elementId, props:input.props});
+        flash([input.elementId]);
+        renderElList();
+        if (selectedId===input.elementId) renderInspector();
+        return r;
+      }
+      case 'remove_element': {
+        const r = live.executeCommand({type:'remove_element', elementId:input.elementId});
+        if (selectedId===input.elementId) { selectedId=null; renderInspector(); }
+        renderElList();
+        return r;
+      }
+      case 'set_constraint': {
+        const constraint = {target:input.target};
+        if (input.x) constraint.x=input.x;
+        if (input.y) constraint.y=input.y;
+        if (input.width) constraint.width=input.width;
+        if (input.height) constraint.height=input.height;
+        const r = live.executeCommand({type:'add_constraint', constraint});
+        flash([input.target]);
+        renderElList();
+        if (selectedId===input.target) renderInspector();
+        document.getElementById('cBadge').textContent=`${live.spec.constraints?.length||0} constraints`;
+        return r;
+      }
+      case 'remove_constraint': {
+        const r = live.executeCommand({type:'remove_constraint', elementId:input.elementId});
+        renderElList();
+        document.getElementById('cBadge').textContent=`${live.spec.constraints?.length||0} constraints`;
+        return r;
+      }
+      case 'store_intent': {
+        const deps=new Set();
+        const targets=[];
+        for (const c of (input.constraints||[])) {
+          live.executeCommand({type:'add_constraint', constraint:{target:c.target,[c.prop]:c.expr}});
+          (c.deps||[]).forEach(d=>deps.add(d));
+          targets.push(c.target);
+        }
+        flash(targets);
+        const intent={id:`i${++intentN}`,natural:input.natural,compiled:input.constraints||[],
+          type:input.constraints?.[0]?.type||'reactive',deps:Array.from(deps),stale:false};
+        intents.push(intent);
+        renderIntentList();
+        renderElList();
+        document.getElementById('cBadge').textContent=`${live.spec.constraints?.length||0} constraints`;
+        return {success:true, intentId:intent.id, constraintsApplied:targets.length};
+      }
+      case 'add_animation': {
+        const r = live.executeCommand({type:'add_animation', animation:input});
+        flash([input.target]);
+        return r;
+      }
+      default:
+        return {error:'Unknown tool: '+name};
+    }
+  } catch(e) {
+    return {error: e.message};
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Agent loop
+// ═══════════════════════════════════════════════════════════════════════════
+async function runAgent() {
   const apiKey = document.getElementById('apiKey').value.trim();
-  if (!apiKey) { log('No API key'); return null; }
+  const userMsg = document.getElementById('aiInput').value.trim();
+  if (!apiKey || !userMsg) return;
+
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('aiInput').value = '';
   setStatus('busy');
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'x-api-key':apiKey,'anthropic-version':'2023-06-01',
-        'content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:2048,
-        system:systemPrompt, messages:[{role:'user',content:userMsg}]})
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return data.content?.[0]?.text || null;
-  } catch(e) { log('API error: ' + e.message); return null; }
-  finally { setStatus('live'); }
-}
+  log(`User: ${userMsg}`);
 
-function parseJSON(raw) {
-  // Strip markdown fences
-  const cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-  // Try array first
-  const s = cleaned.indexOf('['), e = cleaned.lastIndexOf(']');
-  if (s !== -1 && e !== -1 && e > s) return JSON.parse(cleaned.slice(s, e+1));
-  // Fallback: bare object → wrap in array
-  const os = cleaned.indexOf('{'), oe = cleaned.lastIndexOf('}');
-  if (os !== -1 && oe !== -1 && oe > os) return [JSON.parse(cleaned.slice(os, oe+1))];
-  throw new Error('No JSON found in response');
-}
+  const messages = [{role:'user', content: userMsg}];
 
-async function executeCommand() {
-  const natural = document.getElementById('aiInput').value.trim();
-  if (!natural || !selectedId) return;
-  document.getElementById('cmdBtn').disabled = true;
-  document.getElementById('intentBtn').disabled = true;
-  document.getElementById('aiInput').value = '';
+  for (let round = 0; round < 10; round++) {
+    let data;
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'x-api-key':apiKey,'anthropic-version':'2023-06-01',
+          'content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:4096,
+          system:SYSTEM_PROMPT, tools:TOOLS, messages})
+      });
+      if (!res.ok) { const e=await res.json().catch(()=>{}); log(`API error: ${e?.error?.message||res.status}`); break; }
+      data = await res.json();
+    } catch(e) { log(`Network error: ${e.message}`); break; }
 
-  const ctx = getCtx();
-  const sel = ctx.find(e => e.id === selectedId);
-  const userMsg = `Selected element: ${JSON.stringify(sel)}\n\nAll elements:\n${JSON.stringify(ctx,null,2)}\n\nInstruction: "${natural}"`;
+    // Add assistant response to history
+    messages.push({role:'assistant', content:data.content});
 
-  log(`Command: "${natural}"`);
-  const raw = await callClaude(CMD_PROMPT, userMsg);
-  if (!raw) { enableBtns(); return; }
-  log(`Raw: ${raw.slice(0,100)}`);
-
-  try {
-    const commands = parseJSON(raw);
-    const preMeas = live.evaluate(0, {}).measurements;
-    const results = commands.map(cmd => live.executeCommand(cmd));
-    const postMeas = live.evaluate(0, {}).measurements;
-
-    const modified = commands.map(c => c.constraint?.target||c.elementId||c.element?.id).filter(Boolean);
-    flash(modified);
-
-    // Delta log
-    for (const id of modified) {
-      const pre = preMeas[id], post = postMeas[id];
-      if (!pre||!post) continue;
-      const d = [];
-      if (Math.abs((pre.x||0)-(post.x||0))>0.5) d.push(`x:${Math.round(pre.x)}→${Math.round(post.x)}`);
-      if (Math.abs((pre.y||0)-(post.y||0))>0.5) d.push(`y:${Math.round(pre.y)}→${Math.round(post.y)}`);
-      if (d.length) log(`  ${id}: ${d.join(', ')}`);
+    if (data.stop_reason === 'end_turn') {
+      // Extract and show final text
+      const text = data.content.find(b=>b.type==='text')?.text;
+      if (text) log(`Claude: ${text}`);
+      break;
     }
-    log(`✓ ${commands.length} command(s) applied`);
-    renderElList();
-    renderInspector();
-    document.getElementById('cBadge').textContent = `${live.spec.constraints?.length||0} constraints`;
-  } catch(e) { log('Parse error: ' + e.message); }
-  enableBtns();
-}
 
-async function compileIntent() {
-  const natural = document.getElementById('aiInput').value.trim();
-  if (!natural || !selectedId) return;
-  document.getElementById('cmdBtn').disabled = true;
-  document.getElementById('intentBtn').disabled = true;
-  document.getElementById('aiInput').value = '';
-
-  const ctx = getCtx();
-  const sel = ctx.find(e => e.id === selectedId);
-  const userMsg = `Selected element: ${JSON.stringify(sel)}\n\nAll elements:\n${JSON.stringify(ctx,null,2)}\n\nIntent: "${natural}"`;
-
-  log(`Intent: "${natural}"`);
-  const raw = await callClaude(INTENT_PROMPT, userMsg);
-  if (!raw) { enableBtns(); return; }
-  log(`Raw: ${raw.slice(0,100)}`);
-
-  try {
-    const compiled = parseJSON(raw);
-    const deps = new Set();
-    const targets = [];
-    for (const c of compiled) {
-      live.executeCommand({type:'add_constraint', constraint:{target:c.target, [c.prop]:c.expr}});
-      (c.deps||[]).forEach(d => deps.add(d));
-      targets.push(c.target);
+    if (data.stop_reason === 'tool_use') {
+      // Execute all tool calls, collect results
+      const results = [];
+      for (const block of data.content) {
+        if (block.type !== 'tool_use') continue;
+        const result = executeTool(block.name, block.input);
+        results.push({type:'tool_result', tool_use_id:block.id, content:JSON.stringify(result)});
+      }
+      messages.push({role:'user', content:results});
+      // Continue loop — Claude may call more tools
+    } else {
+      break; // unexpected stop reason
     }
-    flash(targets);
-    const intent = {
-      id: `i${++intentN}`, natural, compiled,
-      type: compiled[0]?.type || 'reactive',
-      deps: Array.from(deps), stale: false
-    };
-    intents.push(intent);
-    log(`✓ ${compiled.length} constraint(s) — ${intent.type}`);
-    renderIntentList();
-    renderElList();
-    renderInspector();
-    document.getElementById('cBadge').textContent = `${live.spec.constraints?.length||0} constraints`;
-  } catch(e) { log('Parse error: ' + e.message); }
-  enableBtns();
+  }
+
+  setStatus('live');
+  document.getElementById('sendBtn').disabled = !document.getElementById('apiKey').value.trim();
 }
 
 async function recompileIntent(intentId) {
-  const intent = intents.find(i => i.id === intentId);
+  const intent = intents.find(i=>i.id===intentId);
   if (!intent) return;
-  const apiKey = document.getElementById('apiKey').value.trim();
-  if (!apiKey) return;
-  intent.compiled.forEach(c => live.executeCommand({type:'remove_constraint', elementId:c.target}));
-  log(`Re-compiling: "${intent.natural.slice(0,40)}"`);
-  const ctx = getCtx();
-  const userMsg = `All elements:\n${JSON.stringify(ctx,null,2)}\n\nIntent: "${intent.natural}"`;
-  const raw = await callClaude(INTENT_PROMPT, userMsg);
-  if (!raw) return;
-  try {
-    const compiled = parseJSON(raw);
-    const deps = new Set();
-    for (const c of compiled) {
-      live.executeCommand({type:'add_constraint', constraint:{target:c.target, [c.prop]:c.expr}});
-      (c.deps||[]).forEach(d => deps.add(d));
-    }
-    flash(compiled.map(c => c.target));
-    const idx = intents.findIndex(i => i.id === intentId);
-    if (idx >= 0) intents[idx] = {...intent, compiled, deps:Array.from(deps), stale:false, type:compiled[0]?.type||'reactive'};
-    log(`✓ Re-compiled`);
-    renderIntentList();
-  } catch(e) { log('Re-compile parse error: ' + e.message); }
+  intent.compiled.forEach(c=>live.executeCommand({type:'remove_constraint',elementId:c.target}));
+  // Re-run agent with the original natural language as context
+  document.getElementById('aiInput').value = intent.natural;
+  await runAgent();
+  const idx = intents.findIndex(i=>i.id===intentId);
+  if (idx>=0) { intents.splice(idx,1); renderIntentList(); }
 }
 
 function removeIntent(intentId) {
-  const idx = intents.findIndex(i => i.id === intentId);
-  if (idx < 0) return;
-  intents[idx].compiled.forEach(c => live.executeCommand({type:'remove_constraint', elementId:c.target}));
-  intents.splice(idx, 1);
-  renderIntentList();
-  renderElList();
-  document.getElementById('cBadge').textContent = `${live.spec.constraints?.length||0} constraints`;
+  const idx = intents.findIndex(i=>i.id===intentId);
+  if (idx<0) return;
+  intents[idx].compiled.forEach(c=>live.executeCommand({type:'remove_constraint',elementId:c.target}));
+  intents.splice(idx,1);
+  renderIntentList(); renderElList();
+  document.getElementById('cBadge').textContent=`${live.spec.constraints?.length||0} constraints`;
   log('Intent removed');
 }
 
-function enableBtns() {
-  const hasKey = !!document.getElementById('apiKey').value.trim();
-  document.getElementById('cmdBtn').disabled    = !selectedId || !hasKey;
-  document.getElementById('intentBtn').disabled = !selectedId || !hasKey;
-}
-
 function setStatus(s) {
-  const b = document.getElementById('statusBadge');
-  if (s==='busy') { b.textContent='◈ THINKING'; b.className='badge busy'; }
-  else { b.textContent='● LIVE'; b.className='badge live'; }
+  const b=document.getElementById('statusBadge');
+  if (s==='busy'){b.textContent='◈ THINKING';b.className='badge busy';}
+  else{b.textContent='● LIVE';b.className='badge live';}
 }
 
 function log(msg) {
-  const box = document.getElementById('logBox');
-  box.textContent = msg + '\n' + box.textContent.split('\n').slice(0,20).join('\n');
+  const box=document.getElementById('logBox');
+  const lines=box.textContent.split('\n');
+  box.textContent=msg+'\n'+lines.slice(0,25).join('\n');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Add elements
+// Add element buttons
 // ═══════════════════════════════════════════════════════════════════════════
-document.querySelectorAll('.add-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const type = btn.dataset.add;
-    const id = `el_${++newElN}`;
-    const el = {id, type, x:100+newElN*20, y:100+newElN*16};
-    if (type==='rectangle') { el.width=120; el.height=80; el.fill='#141430'; el.stroke='#242450'; el.stroke_width=1; }
-    if (type==='circle') { el.radius=30; el.fill='#4ecdc4'; }
-    if (type==='text') { el.content='New text'; el.font='14px DM Sans'; el.color='#c8c8d8'; }
-    if (type==='text_box') { el.width=200; el.height=60; el.content='New text box'; el.font='14px DM Sans'; el.color='#c8c8d8'; }
-    live.executeCommand({type:'add_element', element:el});
-    renderElList();
-    selectElement(id);
-    flash([id]);
+document.querySelectorAll('.add-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const type=btn.dataset.add, id=`el_${++newElN}`;
+    const el={id,type,x:100+newElN*18,y:100+newElN*14};
+    if(type==='rectangle'){el.width=120;el.height=80;el.fill='#141430';el.stroke='#242450';el.stroke_width=1;}
+    if(type==='circle'){el.radius=30;el.fill='#4ecdc4';}
+    if(type==='text'){el.content='New text';el.font='14px DM Sans';el.color='#c8c8d8';}
+    if(type==='text_box'){el.width=200;el.height=60;el.content='New text box';el.font='14px DM Sans';el.color='#c8c8d8';}
+    live.executeCommand({type:'add_element',element:el});
+    renderElList(); selectEl(id); flash([id]);
     log(`Added ${type}: ${id}`);
   });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Keyboard shortcuts
+// Input / send
 // ═══════════════════════════════════════════════════════════════════════════
-document.getElementById('aiInput').addEventListener('keydown', e => {
-  if ((e.metaKey||e.ctrlKey) && !e.shiftKey && e.key==='Enter') { e.preventDefault(); executeCommand(); }
-  if ((e.metaKey||e.ctrlKey) &&  e.shiftKey && e.key==='Enter') { e.preventDefault(); compileIntent(); }
+document.getElementById('sendBtn').addEventListener('click', runAgent);
+document.getElementById('aiInput').addEventListener('keydown', e=>{
+  if ((e.metaKey||e.ctrlKey) && e.key==='Enter') { e.preventDefault(); runAgent(); }
 });
 
-document.getElementById('cmdBtn').addEventListener('click', executeCommand);
-document.getElementById('intentBtn').addEventListener('click', compileIntent);
-
-// ═══════════════════════════════════════════════════════════════════════════
-// API Key
-// ═══════════════════════════════════════════════════════════════════════════
-const savedKey = localStorage.getItem('sf_api_key');
+// API key
+const savedKey=localStorage.getItem('sf_api_key');
 if (savedKey) {
-  document.getElementById('apiKey').value = savedKey;
-  document.getElementById('keyStatus').textContent = '● key loaded';
-  document.getElementById('keyStatus').style.color = 'var(--ok)';
+  document.getElementById('apiKey').value=savedKey;
+  document.getElementById('keyStatus').textContent='● key loaded';
+  document.getElementById('keyStatus').style.color='var(--ok)';
+  document.getElementById('sendBtn').disabled=false;
 }
-document.getElementById('apiKey').addEventListener('input', () => {
-  const k = document.getElementById('apiKey').value.trim();
-  if (k) { localStorage.setItem('sf_api_key', k); document.getElementById('keyStatus').textContent='● active'; document.getElementById('keyStatus').style.color='var(--ok)'; }
-  enableBtns();
+document.getElementById('apiKey').addEventListener('input',()=>{
+  const k=document.getElementById('apiKey').value.trim();
+  if(k){localStorage.setItem('sf_api_key',k);document.getElementById('keyStatus').textContent='● active';document.getElementById('keyStatus').style.color='var(--ok)';}
+  document.getElementById('sendBtn').disabled=!k;
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -858,31 +836,19 @@ let frameN = 0;
 live.start((state, t, sigs) => {
   frameN++;
   lastState = state;
-
-  // SVG overlays
-  if (frameN % 2 === 0) {
-    updateArrows(state);
-    updateSelection(state);
+  if (frameN%2===0) { updateArrows(state); updateSel(state); }
+  if (frameN%6===0) {
+    document.getElementById('sigMon').innerHTML=[
+      ['mouse.x',Math.round(sigs.mouse.x)],['mouse.y',Math.round(sigs.mouse.y)],
+      ['time.s',sigs.time.s.toFixed(2)],['time.norm',sigs.time.norm.toFixed(3)]
+    ].map(([k,v])=>`<div class="sig-row"><span class="sig-name">${k}</span><span class="sig-val">${v}</span></div>`).join('');
   }
-
-  // Signal monitor
-  if (frameN % 6 === 0) {
-    document.getElementById('sigMon').innerHTML = [
-      ['mouse.x', Math.round(sigs.mouse.x)],
-      ['mouse.y', Math.round(sigs.mouse.y)],
-      ['time.s',  sigs.time.s.toFixed(2)],
-      ['time.norm', sigs.time.norm.toFixed(3)],
-    ].map(([k,v]) => `<div class="sig-row"><span class="sig-name">${k}</span><span class="sig-val">${v}</span></div>`).join('');
-  }
-
-  // Toolbar
-  if (frameN % 20 === 0) {
-    document.getElementById('cBadge').textContent = `${state.constraints?.length||0} constraints`;
+  if (frameN%20===0) {
+    document.getElementById('cBadge').textContent=`${state.constraints?.length||0} constraints`;
     if (selectedId) renderInspector();
   }
-
-  if (frameN % 60 === 0 && live._fps > 0) {
-    document.getElementById('fpsEl').textContent = `${live._fps} fps`;
+  if (frameN%60===0&&live._fps>0) {
+    document.getElementById('fpsEl').textContent=`${live._fps} fps`;
     renderElList();
   }
 });
