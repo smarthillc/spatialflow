@@ -117,7 +117,8 @@
   .ic-natural{color:var(--text);flex:1;font-size:9px;}
   .ic-tag{font-size:8px;padding:1px 5px;border-radius:2px;}
   .ic-body{padding:5px 8px;background:rgba(0,0,0,.25);border-top:1px solid var(--border);
-            font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.7;}
+            font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.7;
+            max-height:120px;overflow-y:auto;}
   .ic-expr{color:var(--accent2);}
   .ic-actions{display:flex;gap:3px;margin-top:4px;}
   .ic-btn{font-family:var(--mono);font-size:8px;padding:2px 6px;border-radius:2px;cursor:pointer;}
@@ -225,7 +226,7 @@
   <div class="ph v">Ask Claude</div>
   <div class="ai-wrap">
     <textarea class="ai-input" id="aiInput"
-      placeholder="Select an element, then describe what it should do…&#10;&#10;Commands:  "move the title left 40px"&#10;Intents:   "subtitle always below title"&#10;Signals:   "dot follows the mouse""></textarea>
+      placeholder="Select an element, then type…&#10;&#10;Execute  →  one-time action&#10;  "move title to center"  "make it blue"&#10;  "build a earnings slide for Smarthi Corp"&#10;&#10;Intent  →  living relationship&#10;  "always 16px below the title"&#10;  "follow the mouse"  "match title text width""></textarea>
     <div class="ai-actions">
       <button class="ai-btn cmd" id="cmdBtn" disabled>Execute ▶</button>
       <button class="ai-btn intent" id="intentBtn" disabled>Compile Intent ◈</button>
@@ -639,7 +640,7 @@ async function callClaude(systemPrompt, userMsg) {
       method:'POST',
       headers:{'x-api-key':apiKey,'anthropic-version':'2023-06-01',
         'content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:800,
+      body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:2048,
         system:systemPrompt, messages:[{role:'user',content:userMsg}]})
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -650,9 +651,15 @@ async function callClaude(systemPrompt, userMsg) {
 }
 
 function parseJSON(raw) {
-  const s = raw.indexOf('['), e = raw.lastIndexOf(']');
-  if (s === -1 || e === -1) throw new Error('No JSON array in response');
-  return JSON.parse(raw.slice(s, e+1));
+  // Strip markdown fences
+  const cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  // Try array first
+  const s = cleaned.indexOf('['), e = cleaned.lastIndexOf(']');
+  if (s !== -1 && e !== -1 && e > s) return JSON.parse(cleaned.slice(s, e+1));
+  // Fallback: bare object → wrap in array
+  const os = cleaned.indexOf('{'), oe = cleaned.lastIndexOf('}');
+  if (os !== -1 && oe !== -1 && oe > os) return [JSON.parse(cleaned.slice(os, oe+1))];
+  throw new Error('No JSON found in response');
 }
 
 async function executeCommand() {
