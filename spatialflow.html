@@ -622,8 +622,17 @@ function executeTool(name, input) {
   log(`🔧 ${name}${input.elementId?' → '+input.elementId:input.target?' → '+input.target:input.id?' → '+input.id:''}`);
   try {
     switch (name) {
-      case 'get_state':
-        return {elements: getCtx(), constraints: live.spec.constraints||[], slide:{width:960,height:540}};
+      case 'get_state': {
+        // Return compact state — full measurements bloat context fast
+        const ctx = getCtx();
+        return {
+          slide: {width:960, height:540},
+          elements: ctx.map(e => ({id:e.id, type:e.type, x:e.x, y:e.y, width:e.width, height:e.height,
+            bounds:e.bounds, centerX:e.centerX, centerY:e.centerY, actualWidth:e.actualWidth||undefined})),
+          constraints: (live.spec.constraints||[]).map(c => ({target:c.target,
+            ...(c.x&&{x:c.x}), ...(c.y&&{y:c.y}), ...(c.width&&{width:c.width}), ...(c.height&&{height:c.height})}))
+        };
+      }
 
       case 'add_element': {
         const r = live.executeCommand({type:'add_element', element:input});
@@ -733,12 +742,15 @@ async function runAgent() {
     }
 
     if (data.stop_reason === 'tool_use') {
-      // Execute all tool calls, collect results
+      // Execute all tool calls, collect compact results
       const results = [];
       for (const block of data.content) {
         if (block.type !== 'tool_use') continue;
         const result = executeTool(block.name, block.input);
-        results.push({type:'tool_result', tool_use_id:block.id, content:JSON.stringify(result)});
+        // Keep results compact — only include what Claude needs to continue reasoning
+        const compact = block.name === 'get_state' ? result
+          : {success: result?.success ?? true, message: result?.message, elementId: block.input?.id || block.input?.elementId || block.input?.target};
+        results.push({type:'tool_result', tool_use_id:block.id, content:JSON.stringify(compact)});
       }
       messages.push({role:'user', content:results});
       // Continue loop — Claude may call more tools
