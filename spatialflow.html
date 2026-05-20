@@ -285,22 +285,31 @@ const TOOLS = [
   },
   {
     name: 'add_element',
-    description: 'Add a new element to the canvas. Choose sensible initial positions and colors that fit the dark theme.',
+    description: 'Add a new element to the canvas. Use border_radius for rounded corners. Use opacity for transparency. Use shadow for depth. Use text_align/valign/padding_x/padding_y for text layout.',
     input_schema: {
       type:'object',
       properties: {
-        id:{type:'string'}, type:{type:'string', enum:['rectangle','circle','text','text_box']},
+        id:{type:'string'}, type:{type:'string', enum:['rectangle','circle','text','text_box','line','frame']},
         x:{type:'number'}, y:{type:'number'},
         width:{type:'number'}, height:{type:'number'}, radius:{type:'number'},
+        x2:{type:'number'}, y2:{type:'number'},
         fill:{type:'string'}, stroke:{type:'string'}, stroke_width:{type:'number'},
-        content:{type:'string'}, font:{type:'string'}, color:{type:'string'}
+        border_radius:{type:'number', description:'Corner radius — 4 subtle, 8 medium, 16 large, 999 pill'},
+        opacity:{type:'number', description:'0–1'},
+        shadow:{type:'object', description:'e.g. {blur:12,x:0,y:4,color:"rgba(0,0,0,0.4)"}'},
+        gradient:{type:'object', description:'e.g. {type:"linear",x0:0,y0:0,x1:0,y1:1,stops:[{pos:0,color:"#111"},{pos:1,color:"#1a1a2e"}]}'},
+        content:{type:'string'}, font:{type:'string'}, color:{type:'string'},
+        text_align:{type:'string', enum:['left','center','right']},
+        valign:{type:'string', enum:['top','middle','bottom']},
+        padding_x:{type:'number'}, padding_y:{type:'number'},
+        line_height:{type:'number'}
       },
       required:['id','type','x','y']
     }
   },
   {
     name: 'update_element',
-    description: 'Update properties of an existing element (content, color, position, size, font, etc.)',
+    description: 'Update properties of an existing element. Supports all add_element properties: content, color, position, size, font, border_radius, opacity, shadow, gradient, text_align, valign, padding_x, padding_y.',
     input_schema: {
       type:'object',
       properties: {
@@ -376,26 +385,92 @@ const TOOLS = [
 
 const SYSTEM_PROMPT = `You control SpatialFlow, a reactive constraint layout engine on a 960×540 canvas.
 
-CONSTRAINT EXPRESSION SYNTAX (use in set_constraint and store_intent):
-- Element refs: {id}.x  {id}.y  {id}.width  {id}.height  {id}.bounds.left/right/top/bottom  {id}.centerX  {id}.centerY  {id}.actualWidth
-- Slide: slide.width=960  slide.height=540  slide.centerX=480  slide.centerY=270
-- Live signals: mouse.x  mouse.y  time.ms(0-8000)  time.norm(0-1)
-- Math: sin cos sqrt clamp(x,a,b) lerp(a,b,t) abs min max
-- Ternary: condition ? value_a : value_b
+═══ ELEMENT PROPERTIES ═══
 
-WHEN TO USE EACH TOOL:
-• get_state — call first when you need to see current layout before deciding
-• add_element / update_element / remove_element — create/modify/delete elements
-• set_constraint — reactive expression on one element (engine-level, unnamed)
-• store_intent — ongoing named relationship the user described ("always below", "follows mouse") — you compile it yourself
-• add_animation — keyframe animation
+rectangle / frame:
+  x, y, width, height
+  fill (hex color or omit)
+  stroke (hex), stroke_width (number)
+  border_radius (number — rounds corners, e.g. 8 for slight, 999 for pill)
+  opacity (0–1)
+  shadow: { blur: 12, x: 0, y: 4, color: "rgba(0,0,0,0.4)" }
+  gradient: { type:"linear", x0:0, y0:0, x1:0, y1:1, stops:[{pos:0,color:"#111"},{pos:1,color:"#222"}] }
 
-RULES:
-- Never remove or modify "bg" (full-slide background)
-- Dark theme palette: fills #111119–#1e1030, text #e8e8f8, accents #7eb8ff #4ecdc4 #c084fc #50e890 #f7b731
-- Fonts: "DM Sans" for text, "JetBrains Mono" for code/data/labels
-- Call multiple tools per turn — chain get_state → updates → constraints as needed
-- After finishing, write a short plain-English summary of what you did`;
+circle:
+  x (center), y (center), radius
+  fill, stroke, stroke_width, opacity, shadow
+
+text (single line, baseline at y):
+  x, y, content, font, color, opacity, text_align ("left"|"center"|"right")
+
+text_box (multiline, top-left at x,y):
+  x, y, width, height
+  content, font, color, opacity
+  text_align ("left"|"center"|"right")
+  valign ("top"|"middle"|"bottom")  — vertical alignment inside box
+  padding_x, padding_y  — inner spacing from edges (default 0)
+  line_height — multiplier, default 1.3
+
+line (straight line):
+  x, y, x2, y2, stroke, stroke_width, opacity
+
+═══ FONTS ═══
+Use CSS font strings: "bold 32px DM Sans", "500 14px DM Sans", "11px JetBrains Mono"
+Available: DM Sans (weights 300–700), JetBrains Mono (weights 400–700)
+
+═══ COLOR PALETTE (dark theme) ═══
+Backgrounds:  #0d0d14 (canvas)  #111119 (card)  #16162a (surface)  #1a1a2e (subtle)
+Text:         #e8e8f8 (primary)  #c8c8d8 (secondary)  #5a5a8a (muted)  #3a3a5a (dim)
+Accents:      #7eb8ff (blue)  #4ecdc4 (teal)  #c084fc (violet)  #50e890 (green)  #f7b731 (gold)  #ff6b6b (red)
+Borders:      #1c1c2e (subtle)  #2a2a4a (visible)  #3a3a5a (strong)
+
+═══ CONSTRAINT EXPRESSIONS ═══
+Element refs: {id}.x  {id}.y  {id}.width  {id}.height
+              {id}.bounds.left  .right  .top  .bottom
+              {id}.centerX  {id}.centerY  {id}.actualWidth
+Slide:        slide.width=960  slide.height=540  slide.centerX=480  slide.centerY=270
+Signals:      mouse.x  mouse.y  time.ms  time.norm
+Math:         sin cos sqrt clamp(x,a,b) lerp(a,b,t) abs min max
+Ternary:      condition ? value_a : value_b
+
+═══ POSITIONING PHILOSOPHY — CRITICAL ═══
+ALWAYS position elements relative to each other using set_constraint, not hardcoded pixels.
+
+Pattern: build structure top-down
+  1. Create section container rectangles first (they hold the region)
+  2. Position children relative to their container: x = "container.bounds.left + 16"
+  3. Chain siblings: x = "prev_sibling.bounds.right + 8"
+  4. Use slide.centerX for centering: x = "slide.centerX - width/2"
+
+BAD (hardcoded — breaks if anything moves):
+  add_element title  x:60 y:56
+  add_element subtitle  x:60 y:130
+
+GOOD (constrained — subtitle always follows title):
+  add_element title  x:60 y:56
+  add_element subtitle  x:60 y:100
+  set_constraint subtitle  y:"title.bounds.bottom + 12"
+
+For rows of equal cards: constrain each to previous card's bounds.right
+  card_a: x=60 (anchor)
+  card_b: set_constraint x="card_a.bounds.right + 16"
+  card_c: set_constraint x="card_b.bounds.right + 16"
+
+For centering a label on a card:
+  set_constraint label  x="card.centerX - 40"  y="card.bounds.top + 16"
+
+═══ TOOLS ═══
+• get_state — read current element positions/sizes before deciding
+• add_element — create element (start with good defaults, then constrain)
+• update_element — change properties of existing element
+• remove_element — delete (never "bg")
+• set_constraint — reactive expression tying element to others or signals
+• remove_constraint — revert to base position
+• store_intent — compile + store a named ongoing relationship
+• add_animation — keyframe animation (time 0–8000ms)
+
+After completing, write a brief plain-English summary.`;
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // State

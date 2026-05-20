@@ -662,55 +662,134 @@ class SpatialFlowEngine {
     return s;
   }
 
+  // ── Shared helpers ──────────────────────────────────────────────────────
+  _roundedRect(ctx, x, y, w, h, r) {
+    r = Math.min(r || 0, w / 2, h / 2);
+    if (r <= 0) { ctx.rect(x, y, w, h); return; }
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y,     x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x,     y + h, r);
+    ctx.arcTo(x,     y + h, x,     y,     r);
+    ctx.arcTo(x,     y,     x + w, y,     r);
+    ctx.closePath();
+  }
+
+  _applyShadow(ctx, el) {
+    if (!el.shadow) return;
+    ctx.shadowColor   = el.shadow.color  || 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur    = el.shadow.blur   ?? 8;
+    ctx.shadowOffsetX = el.shadow.x      ?? 0;
+    ctx.shadowOffsetY = el.shadow.y      ?? 2;
+  }
+
+  _clearShadow(ctx) {
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+  }
+
+  _makeFill(ctx, el, x, y, w, h) {
+    if (!el.fill) return null;
+    if (el.gradient) {
+      const g = el.gradient;
+      const grad = g.type === 'radial'
+        ? ctx.createRadialGradient(x+w/2, y+h/2, 0, x+w/2, y+h/2, Math.max(w,h)/2)
+        : ctx.createLinearGradient(
+            x + (g.x0 ?? 0) * w, y + (g.y0 ?? 0) * h,
+            x + (g.x1 ?? 1) * w, y + (g.y1 ?? 1) * h);
+      (g.stops || []).forEach(s => grad.addColorStop(s.pos, s.color));
+      return grad;
+    }
+    return el.fill;
+  }
+
   _renderElement(el, m, state) {
     const ctx = this.ctx;
+    const opacity = el.opacity ?? 1;
     switch (el.type) {
       case 'rectangle':
       case 'frame': {
         ctx.save();
-        if (el.fill) { ctx.fillStyle = el.fill; ctx.fillRect(m.x, m.y, m.width, m.height); }
+        if (opacity < 1) ctx.globalAlpha = opacity;
+        const r = el.border_radius || el.radius || 0;
+        if (el.shadow) this._applyShadow(ctx, el);
+        const fill = this._makeFill(ctx, el, m.x, m.y, m.width, m.height);
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.beginPath(); this._roundedRect(ctx, m.x, m.y, m.width, m.height, r);
+          ctx.fill();
+          this._clearShadow(ctx);
+        }
         if (el.stroke) {
           ctx.strokeStyle = el.stroke;
           ctx.lineWidth = el.stroke_width || 1;
-          ctx.strokeRect(m.x, m.y, m.width, m.height);
+          ctx.beginPath(); this._roundedRect(ctx, m.x, m.y, m.width, m.height, r);
+          ctx.stroke();
         }
         if (el.type === 'frame' && !el.fill && !el.stroke) {
-          ctx.strokeStyle = '#ddd';
-          ctx.setLineDash([4, 4]);
-          ctx.strokeRect(m.x, m.y, m.width, m.height);
-          ctx.setLineDash([]);
+          ctx.strokeStyle = '#2a2a4a'; ctx.setLineDash([4,4]);
+          ctx.beginPath(); this._roundedRect(ctx, m.x, m.y, m.width, m.height, r);
+          ctx.stroke(); ctx.setLineDash([]);
         }
         ctx.restore();
         break;
       }
       case 'circle': {
         ctx.save();
-        ctx.fillStyle = el.fill || '#ff6b6b';
+        if (opacity < 1) ctx.globalAlpha = opacity;
+        if (el.shadow) this._applyShadow(ctx, el);
+        const fill = this._makeFill(ctx, el, m.x - (el.radius||0), m.y - (el.radius||0), (el.radius||0)*2, (el.radius||0)*2);
+        ctx.fillStyle = fill || '#ff6b6b';
         ctx.beginPath();
         ctx.arc(m.x, m.y, el.radius || 10, 0, Math.PI * 2);
         ctx.fill();
+        this._clearShadow(ctx);
         if (el.stroke) { ctx.strokeStyle = el.stroke; ctx.lineWidth = el.stroke_width || 1; ctx.stroke(); }
         ctx.restore();
         break;
       }
       case 'text': {
         ctx.save();
+        if (opacity < 1) ctx.globalAlpha = opacity;
         ctx.font = el.font || '16px Inter';
-        ctx.fillStyle = el.color || '#333';
+        ctx.fillStyle = el.color || '#c8c8d8';
+        ctx.textAlign = el.text_align || 'left';
+        if (el.shadow) this._applyShadow(ctx, el);
         ctx.fillText(el.content || '', m.x, m.y);
         ctx.restore();
         break;
       }
       case 'text_box': {
         ctx.save();
+        if (opacity < 1) ctx.globalAlpha = opacity;
         ctx.font = m.font || '16px Inter';
-        ctx.fillStyle = el.color || '#111';
-        const lh = m.lineHeight || 20;
+        ctx.fillStyle = el.color || '#c8c8d8';
+        const lh    = m.lineHeight || 20;
         const lines = m.lines || [];
+        const align = el.text_align || 'left';
+        ctx.textAlign = align;
+        if (el.shadow) this._applyShadow(ctx, el);
+
+        // Padding
+        const px = el.padding_x || el.padding || 0;
+        const py = el.padding_y || el.padding || 0;
+
+        // Vertical alignment
+        const totalTextH = lines.length * lh;
+        let baseY = m.y + py;
+        const valign = el.valign || 'top';
+        if (valign === 'middle') baseY = m.y + (m.height - totalTextH) / 2;
+        if (valign === 'bottom') baseY = m.y + m.height - totalTextH - py;
+
+        // Horizontal origin
+        let textX = m.x + px;
+        if (align === 'center') textX = m.x + m.width / 2;
+        if (align === 'right')  textX = m.x + m.width - px;
+
         for (let i = 0; i < lines.length; i++) {
-          ctx.fillText(lines[i], m.x, m.y + (i + 1) * lh - lh * 0.2);
+          ctx.fillText(lines[i], textX, baseY + (i + 1) * lh - lh * 0.2);
         }
         if (el.stroke_box) {
+          this._clearShadow(ctx);
           ctx.strokeStyle = el.stroke_box;
           ctx.strokeRect(m.x, m.y, m.width, m.height);
         }
