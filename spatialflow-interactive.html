@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>SpatialFlow — Interactive Signals</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d14; --panel: #111119; --border: #1c1c2e; --surface: #16162a;
+    --text: #c8c8d8; --dim: #4a4a6a; --accent: #7eb8ff; --accent2: #4ecdc4;
+    --warn: #ff6b6b; --ok: #50e890; --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', system-ui, sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:var(--sans); background:var(--bg); color:var(--text);
+         height:100vh; display:grid; grid-template-columns:280px 1fr 280px; overflow:hidden; }
+
+  .panel { background:var(--panel); border-right:1px solid var(--border);
+            padding:14px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+  .panel.right { border-right:none; border-left:1px solid var(--border); }
+
+  .ph { font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.1em;
+        text-transform:uppercase; color:var(--accent); display:flex; align-items:center; gap:6px;
+        margin-bottom:2px; }
+  .ph::before { content:''; width:3px; height:12px; background:var(--accent); border-radius:2px; }
+
+  .section { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px; }
+
+  .scene-btn { font-family:var(--mono); font-size:11px; padding:8px 10px; background:var(--surface);
+               border:1px solid var(--border); color:var(--dim); border-radius:4px; cursor:pointer;
+               transition:all .15s; width:100%; text-align:left; display:flex; align-items:center; gap:8px; }
+  .scene-btn:hover { color:var(--accent); border-color:var(--accent); }
+  .scene-btn.active { color:var(--accent); border-color:var(--accent); background:rgba(126,184,255,.08); }
+  .scene-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  .sig-row { display:flex; justify-content:space-between; align-items:baseline;
+             font-family:var(--mono); font-size:10px; padding:3px 0;
+             border-bottom:1px solid rgba(255,255,255,.03); }
+  .sig-name { color:var(--dim); }
+  .sig-val { color:var(--accent2); font-size:10px; }
+
+  .slider-wrap { display:flex; flex-direction:column; gap:4px; }
+  .slider-wrap label { font-family:var(--mono); font-size:10px; color:var(--dim);
+                        display:flex; justify-content:space-between; }
+  .slider-wrap label span { color:var(--accent); }
+  input[type=range] { width:100%; -webkit-appearance:none; height:3px; background:var(--border);
+                      border-radius:2px; outline:none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:10px; height:10px;
+                                             background:var(--accent); border-radius:50%; cursor:pointer; }
+
+  .graph-entry { font-family:var(--mono); font-size:10px; line-height:1.7; }
+  .ge-target { color:var(--text); }
+  .ge-arrow { color:var(--dim); }
+  .ge-sig { color:var(--accent2); }
+  .ge-el { color:var(--accent); }
+
+  .canvas-wrap { display:flex; flex-direction:column; background:#08080f; position:relative; }
+  .toolbar { display:flex; align-items:center; gap:8px; padding:8px 14px;
+             background:var(--panel); border-bottom:1px solid var(--border);
+             font-family:var(--mono); font-size:10px; color:var(--dim); }
+  .badge { background:var(--surface); border:1px solid var(--border);
+           padding:2px 8px; border-radius:3px; font-size:9px; }
+  .badge.live { color:var(--ok); border-color:rgba(80,232,144,.3); }
+  canvas { display:block; flex:1; cursor:crosshair; }
+
+  .violations-box { font-family:var(--mono); font-size:9px; max-height:80px; overflow-y:auto; }
+  .viol { padding:3px 6px; margin:2px 0; border-radius:3px; }
+  .viol.overflow { background:rgba(255,107,107,.08); border-left:2px solid var(--warn); color:var(--warn); }
+  .viol.overlap  { background:rgba(255,180,50,.08);  border-left:2px solid #ffb432; color:#ffb432; }
+
+  .log { font-family:var(--mono); font-size:9px; color:var(--dim); max-height:90px;
+         overflow-y:auto; background:rgba(0,0,0,.3); border:1px solid var(--border);
+         border-radius:3px; padding:6px; white-space:pre; line-height:1.6; }
+
+  ::-webkit-scrollbar { width:3px; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .fps { margin-left:auto; }
+</style>
+</head>
+<body>
+
+<!-- LEFT PANEL -->
+<div class="panel">
+  <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text)">
+    Spatial<span style="color:var(--accent)">Flow</span>
+    <span style="font-size:10px;color:var(--dim);margin-left:6px">Interactive Signals</span>
+  </div>
+
+  <div class="ph">Scenes</div>
+  <div style="display:flex;flex-direction:column;gap:5px">
+    <button class="scene-btn active" data-scene="cascade">
+      <span class="scene-dot" style="background:#7eb8ff"></span>
+      Cascade Chain
+    </button>
+    <button class="scene-btn" data-scene="orbit">
+      <span class="scene-dot" style="background:#4ecdc4"></span>
+      Orbital
+    </button>
+    <button class="scene-btn" data-scene="reflow">
+      <span class="scene-dot" style="background:#f7b731"></span>
+      Reflow
+    </button>
+  </div>
+
+  <div class="ph" style="margin-top:4px">Live Signals</div>
+  <div class="section" id="sigMonitor" style="display:flex;flex-direction:column;gap:0"></div>
+
+  <div id="sceneControls"></div>
+</div>
+
+<!-- CENTER CANVAS -->
+<div class="canvas-wrap">
+  <div class="toolbar">
+    <span>SpatialFlow v2 + Signals</span>
+    <span class="badge live">● LIVE</span>
+    <span id="elemCount" class="badge">0 el</span>
+    <span id="constraintCount" class="badge">0 constraints</span>
+    <span class="fps" id="fpsEl">— fps</span>
+  </div>
+  <canvas id="c" width="960" height="540"></canvas>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel right">
+  <div class="ph">Constraint Graph</div>
+  <div class="section" id="graphBox" style="min-height:120px"></div>
+
+  <div class="ph">Signal Dependencies</div>
+  <div class="section" id="sigDepBox" style="min-height:80px"></div>
+
+  <div class="ph">Violations</div>
+  <div class="violations-box" id="violationsBox">
+    <span style="color:var(--dim);font-family:var(--mono);font-size:10px">None</span>
+  </div>
+
+  <div class="ph">Eval Log</div>
+  <div class="log" id="evalLog">Waiting for frame...</div>
+</div>
+
+<script src="spatialflow-engine.js"></script>
+<script>
+// ============================================================================
+// SpatialFlowLive — signal-driven runtime layer
+// ============================================================================
+class SpatialFlowLive extends SpatialFlowEngine {
+  constructor(spec, canvas) {
+    super(spec, canvas);
+    this._sigs = {
+      mouse:    { x: 480, y: 270 },
+      scroll:   { x: 0,   y: 0 },
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      time:     { ms: 0,  s: 0,  norm: 0 }
+    };
+    this._customSigs = {};
+    this._raf = null;
+    this._playing = false;
+    this._t0 = null;
+    this._pausedAt = 0;
+    this._onFrame = null;
+    this._fps = 0;
+    this._lastFpsTime = 0;
+    this._frameCount = 0;
+    this._bindEvents();
+  }
+
+  setCustomSignal(name, value) { this._customSigs[name] = value; }
+
+  _signals() {
+    return { ...this._sigs, ...this._customSigs };
+  }
+
+  _bindEvents() {
+    const c = this.canvas;
+    this._mm = (e) => {
+      const r = c.getBoundingClientRect();
+      this._sigs.mouse = {
+        x: (e.clientX - r.left) * (c.width / r.width),
+        y: (e.clientY - r.top)  * (c.height / r.height)
+      };
+    };
+    c.addEventListener('mousemove', this._mm);
+    this._rs = () => {
+      this._sigs.viewport = { width: window.innerWidth, height: window.innerHeight };
+    };
+    window.addEventListener('resize', this._rs);
+  }
+
+  start(onFrame) {
+    if (this._playing) return;
+    this._playing = true;
+    this._t0 = performance.now() - this._pausedAt;
+    this._onFrame = onFrame;
+    this._loop();
+  }
+
+  _loop() {
+    this._raf = requestAnimationFrame(() => {
+      if (!this._playing) return;
+      const now = performance.now();
+      const elapsed = now - this._t0;
+      const dur = this.spec.metadata?.duration || 8000;
+      const t = elapsed % dur;
+
+      this._sigs.time = { ms: t, s: t / 1000, norm: t / dur };
+
+      const state = this.renderFrame(t, this._signals());
+      if (this._onFrame) this._onFrame(state, t, this._signals());
+
+      // FPS
+      this._frameCount++;
+      if (now - this._lastFpsTime >= 1000) {
+        this._fps = this._frameCount;
+        this._frameCount = 0;
+        this._lastFpsTime = now;
+      }
+
+      this._loop();
+    });
+  }
+
+  pause() {
+    this._playing = false;
+    this._pausedAt = performance.now() - this._t0;
+    cancelAnimationFrame(this._raf);
+  }
+
+  destroy() {
+    this.pause();
+    this.canvas.removeEventListener('mousemove', this._mm);
+    window.removeEventListener('resize', this._rs);
+  }
+}
+
+// ============================================================================
+// Scene Specs
+// ============================================================================
+
+const SCENE_CASCADE = {
+  metadata: { width: 960, height: 540, background: '#0d0d14', duration: 8000 },
+  elements: [
+    // Title
+    { id: 'scene_title', type: 'text', x: 40, y: 28,
+      content: 'SIGNAL PROPAGATION: mouse → measurement chain', font: '11px JetBrains Mono', color: '#2a2a4a' },
+    // Subtitle / hint
+    { id: 'hint', type: 'text', x: 40, y: 510,
+      content: 'Move cursor · box₀ follows mouse · boxes 1–5 chain through measured bounds', font: '10px JetBrains Mono', color: '#2a2a4a' },
+
+    // The 6 cascade boxes
+    { id: 'box0', type: 'rectangle', x: 100, y: 250, width: 56, height: 36, fill: '#7eb8ff' },
+    { id: 'box1', type: 'rectangle', x: 176, y: 250, width: 56, height: 36, fill: '#6aa8ef' },
+    { id: 'box2', type: 'rectangle', x: 252, y: 250, width: 56, height: 36, fill: '#569ad0' },
+    { id: 'box3', type: 'rectangle', x: 328, y: 250, width: 56, height: 36, fill: '#428cbb' },
+    { id: 'box4', type: 'rectangle', x: 404, y: 250, width: 56, height: 36, fill: '#2e7ea6' },
+    { id: 'box5', type: 'rectangle', x: 480, y: 250, width: 56, height: 36, fill: '#1a7091' },
+
+    // Index labels above each box
+    { id: 'lbl0', type: 'text', x: 100, y: 248, content: '0', font: 'bold 10px JetBrains Mono', color: '#7eb8ff' },
+    { id: 'lbl1', type: 'text', x: 176, y: 248, content: '1', font: 'bold 10px JetBrains Mono', color: '#6aa8ef' },
+    { id: 'lbl2', type: 'text', x: 252, y: 248, content: '2', font: 'bold 10px JetBrains Mono', color: '#569ad0' },
+    { id: 'lbl3', type: 'text', x: 328, y: 248, content: '3', font: 'bold 10px JetBrains Mono', color: '#428cbb' },
+    { id: 'lbl4', type: 'text', x: 404, y: 248, content: '4', font: 'bold 10px JetBrains Mono', color: '#2e7ea6' },
+    { id: 'lbl5', type: 'text', x: 480, y: 248, content: '5', font: 'bold 10px JetBrains Mono', color: '#1a7091' },
+
+    // Cursor ring
+    { id: 'cursor_ring', type: 'circle', x: 480, y: 270, radius: 14,
+      fill: 'transparent', stroke: '#7eb8ff', stroke_width: 1 },
+
+    // End label (shows chain end position)
+    { id: 'end_label', type: 'text', x: 560, y: 268,
+      content: '→', font: '11px JetBrains Mono', color: '#50e890' },
+
+    // Annotation: constraint expression labels
+    { id: 'ann0', type: 'text', x: 100, y: 300,
+      content: "x: mouse.x - 28", font: '9px JetBrains Mono', color: '#2e4a6a' },
+    { id: 'ann1', type: 'text', x: 176, y: 300,
+      content: "x: box0.bounds.right + 10", font: '9px JetBrains Mono', color: '#2e4a6a' },
+    { id: 'ann2', type: 'text', x: 252, y: 300,
+      content: "x: box1.bounds.right + 10", font: '9px JetBrains Mono', color: '#2e4a6a' },
+  ],
+  constraints: [
+    // box0 tracks mouse
+    { target: 'box0',        x: 'mouse.x - 28',              y: 'mouse.y - 18' },
+    { target: 'cursor_ring', x: 'mouse.x',                   y: 'mouse.y' },
+    { target: 'lbl0',        x: 'box0.bounds.left',          y: 'box0.bounds.top - 4' },
+    { target: 'ann0',        x: 'box0.bounds.left',          y: 'box0.bounds.bottom + 8' },
+
+    // box1 chains from box0's measured right edge
+    { target: 'box1',        x: 'box0.bounds.right + 10',    y: 'box0.bounds.top' },
+    { target: 'lbl1',        x: 'box1.bounds.left',          y: 'box1.bounds.top - 4' },
+    { target: 'ann1',        x: 'box1.bounds.left',          y: 'box1.bounds.bottom + 8' },
+
+    // box2 chains from box1
+    { target: 'box2',        x: 'box1.bounds.right + 10',    y: 'box1.bounds.top' },
+    { target: 'lbl2',        x: 'box2.bounds.left',          y: 'box2.bounds.top - 4' },
+    { target: 'ann2',        x: 'box2.bounds.left',          y: 'box2.bounds.bottom + 8' },
+
+    // box3–5 continue
+    { target: 'box3',        x: 'box2.bounds.right + 10',    y: 'box2.bounds.top' },
+    { target: 'lbl3',        x: 'box3.bounds.left',          y: 'box3.bounds.top - 4' },
+    { target: 'box4',        x: 'box3.bounds.right + 10',    y: 'box3.bounds.top' },
+    { target: 'lbl4',        x: 'box4.bounds.left',          y: 'box4.bounds.top - 4' },
+    { target: 'box5',        x: 'box4.bounds.right + 10',    y: 'box4.bounds.top' },
+    { target: 'lbl5',        x: 'box5.bounds.left',          y: 'box5.bounds.top - 4' },
+
+    // End label anchors to box5's right edge
+    { target: 'end_label',   x: 'box5.bounds.right + 8',     y: 'box5.centerY + 4' },
+  ]
+};
+
+const SCENE_ORBIT = {
+  metadata: { width: 960, height: 540, background: '#0d0d14', duration: 6000 },
+  elements: [
+    { id: 'scene_title', type: 'text', x: 40, y: 28,
+      content: 'SIGNAL CO-DRIVER: time.ms + mouse → orbital positions → label bounds', font: '11px JetBrains Mono', color: '#2a2a4a' },
+    { id: 'hint', type: 'text', x: 40, y: 510,
+      content: 'Move cursor to shift orbit center · satellites position via time + mouse signals', font: '10px JetBrains Mono', color: '#2a2a4a' },
+
+    // Orbit ring (decorative)
+    { id: 'orbit_ring', type: 'circle', x: 480, y: 270, radius: 100,
+      fill: 'transparent', stroke: '#1c1c2e', stroke_width: 1 },
+
+    // Center dot
+    { id: 'center', type: 'circle', x: 480, y: 270, radius: 5, fill: '#2a2a4a' },
+
+    // 5 satellites
+    { id: 's0', type: 'circle', x: 480, y: 170, radius: 12, fill: '#7eb8ff' },
+    { id: 's1', type: 'circle', x: 580, y: 270, radius: 12, fill: '#6aaae0' },
+    { id: 's2', type: 'circle', x: 544, y: 356, radius: 12, fill: '#569ac0' },
+    { id: 's3', type: 'circle', x: 416, y: 356, radius: 12, fill: '#428aaa' },
+    { id: 's4', type: 'circle', x: 380, y: 270, radius: 12, fill: '#2e7a90' },
+
+    // Label tethered to s0's bounds
+    { id: 'label_s0', type: 'text', x: 500, y: 168,
+      content: '↑ s0', font: '10px JetBrains Mono', color: '#7eb8ff' },
+
+    // Mouse signal label
+    { id: 'mouse_label', type: 'text', x: 800, y: 50,
+      content: 'mouse →', font: '10px JetBrains Mono', color: '#2a2a4a' },
+    { id: 'mouse_cursor', type: 'circle', x: 480, y: 270, radius: 6,
+      fill: 'transparent', stroke: '#4ecdc4', stroke_width: 1 },
+  ],
+  constraints: [
+    // Center tracks mouse (lerped for smooth follow)
+    { target: 'center',       x: 'mouse.x',                                       y: 'mouse.y' },
+    { target: 'orbit_ring',   x: 'mouse.x',                                       y: 'mouse.y' },
+    { target: 'mouse_cursor', x: 'mouse.x',                                       y: 'mouse.y' },
+
+    // Satellites: orbit center at radius 100, time drives angle (2π/5 offsets)
+    { target: 's0', x: 'mouse.x + 100 * cos(time.ms * 0.001)',             y: 'mouse.y + 100 * sin(time.ms * 0.001)' },
+    { target: 's1', x: 'mouse.x + 100 * cos(time.ms * 0.001 + 1.2566)',   y: 'mouse.y + 100 * sin(time.ms * 0.001 + 1.2566)' },
+    { target: 's2', x: 'mouse.x + 100 * cos(time.ms * 0.001 + 2.5133)',   y: 'mouse.y + 100 * sin(time.ms * 0.001 + 2.5133)' },
+    { target: 's3', x: 'mouse.x + 100 * cos(time.ms * 0.001 + 3.7699)',   y: 'mouse.y + 100 * sin(time.ms * 0.001 + 3.7699)' },
+    { target: 's4', x: 'mouse.x + 100 * cos(time.ms * 0.001 + 5.0265)',   y: 'mouse.y + 100 * sin(time.ms * 0.001 + 5.0265)' },
+
+    // Label anchored to s0's measured bounds
+    { target: 'label_s0', x: 's0.bounds.right + 6', y: 's0.centerY + 4' },
+  ]
+};
+
+const SCENE_REFLOW = {
+  metadata: { width: 960, height: 540, background: '#0d0d14', duration: 8000 },
+  elements: [
+    { id: 'scene_title', type: 'text', x: 40, y: 28,
+      content: 'SIGNAL-DRIVEN LAYOUT: container.width → full layout recalculation', font: '11px JetBrains Mono', color: '#2a2a4a' },
+    { id: 'hint', type: 'text', x: 40, y: 510,
+      content: 'Drag the slider · container width signal propagates through all layout constraints', font: '10px JetBrains Mono', color: '#2a2a4a' },
+
+    // Title text
+    { id: 'page_title', type: 'text', x: 80, y: 70,
+      content: 'Adaptive Layout', font: 'bold 28px DM Sans', color: '#e8e8f8' },
+    { id: 'page_sub', type: 'text', x: 80, y: 95,
+      content: 'container.width signal drives column positions + widths', font: '12px JetBrains Mono', color: '#4a4a6a' },
+
+    // Two columns
+    { id: 'col_a', type: 'rectangle', x: 80, y: 114, width: 380, height: 280, fill: '#111119', stroke: '#1c1c2e', stroke_width: 1 },
+    { id: 'col_b', type: 'rectangle', x: 480, y: 114, width: 380, height: 280, fill: '#111119', stroke: '#1c1c2e', stroke_width: 1 },
+
+    { id: 'col_a_label', type: 'text', x: 100, y: 144, content: 'Column A', font: 'bold 14px DM Sans', color: '#7eb8ff' },
+    { id: 'col_a_body', type: 'text_box', x: 100, y: 164, width: 340, height: 200,
+      content: 'Content reflows as the container width signal changes. Constraint: x = container.start, width = container.width / 2 − gap',
+      font: '12px DM Sans', color: '#6a6a8a' },
+
+    { id: 'col_b_label', type: 'text', x: 500, y: 144, content: 'Column B', font: 'bold 14px DM Sans', color: '#4ecdc4' },
+    { id: 'col_b_body', type: 'text_box', x: 500, y: 164, width: 340, height: 200,
+      content: 'Position: x = col_a.bounds.right + gap. No hardcoded x value — derived purely from col_a\'s measured bounds.',
+      font: '12px DM Sans', color: '#6a6a8a' },
+
+    // Width indicator bar
+    { id: 'width_bar', type: 'rectangle', x: 80, y: 420, width: 760, height: 3, fill: '#7eb8ff' },
+    { id: 'width_label', type: 'text', x: 80, y: 436,
+      content: 'width: 760', font: '10px JetBrains Mono', color: '#4a4a6a' },
+
+    // Container boundary markers (thin vertical bars)
+    { id: 'left_rule',  type: 'rectangle', x: 80,  y: 60, width: 1, height: 390, fill: '#1c1c2e' },
+    { id: 'right_rule', type: 'rectangle', x: 840, y: 60, width: 1, height: 390, fill: '#1c1c2e' },
+  ],
+  constraints: [
+    // Title centered in container
+    { target: 'page_title', x: 'container.start + container.width / 2 - 100' },
+    { target: 'page_sub',   x: 'container.start + container.width / 2 - 200' },
+
+    // Col A: starts at container.start, half width minus half gap
+    { target: 'col_a',       x: 'container.start', width: 'container.width / 2 - 8' },
+    { target: 'col_a_label', x: 'container.start + 20' },
+    { target: 'col_a_body',  x: 'container.start + 20', width: 'container.width / 2 - 40' },
+
+    // Col B: starts at col_a's measured right edge + gap
+    { target: 'col_b',       x: 'col_a.bounds.right + 16', width: 'container.width / 2 - 8' },
+    { target: 'col_b_label', x: 'col_b.bounds.left + 20' },
+    { target: 'col_b_body',  x: 'col_b.bounds.left + 20',  width: 'container.width / 2 - 40' },
+
+    // Width indicators follow container
+    { target: 'width_bar',   x: 'container.start', width: 'container.width' },
+    { target: 'width_label', x: 'container.start' },
+    { target: 'right_rule',  x: 'container.start + container.width - 1' },
+  ]
+};
+
+// ============================================================================
+// UI
+// ============================================================================
+const scenes = { cascade: SCENE_CASCADE, orbit: SCENE_ORBIT, reflow: SCENE_REFLOW };
+const SIGNAL_NAMES = ['mouse', 'scroll', 'viewport', 'time', 'container'];
+
+let live = null;
+let currentScene = 'cascade';
+let fpsT = 0;
+
+function buildSigRow(name, val) {
+  const fmt = (v) => {
+    if (typeof v === 'object') return Object.entries(v).map(([k,vv]) => `${k}:${typeof vv === 'number' ? vv.toFixed(0) : vv}`).join(' ');
+    return String(v);
+  };
+  return `<div class="sig-row"><span class="sig-name">${name}</span><span class="sig-val">${fmt(val)}</span></div>`;
+}
+
+function updateSigMonitor(sigs) {
+  const box = document.getElementById('sigMonitor');
+  box.innerHTML = Object.entries(sigs).map(([k, v]) => buildSigRow(k, v)).join('');
+}
+
+function buildGraph(engine, sigs) {
+  const g = engine.getDependencyGraph(Object.keys(sigs));
+  const graphBox = document.getElementById('graphBox');
+  const sigDepBox = document.getElementById('sigDepBox');
+
+  let graphHtml = '', sigDepHtml = '';
+  for (const [target, deps] of Object.entries(g)) {
+    if (deps.elements.length > 0) {
+      graphHtml += `<div class="graph-entry"><span class="ge-target">${target}</span> <span class="ge-arrow">←</span> ${deps.elements.map(e => `<span class="ge-el">${e}</span>`).join(', ')}</div>`;
+    }
+    if (deps.signals.length > 0) {
+      sigDepHtml += `<div class="graph-entry"><span class="ge-target">${target}</span> <span class="ge-arrow">←</span> ${deps.signals.map(s => `<span class="ge-sig">${s}</span>`).join(', ')}</div>`;
+    }
+  }
+
+  graphBox.innerHTML  = graphHtml  || '<span style="color:var(--dim);font-family:var(--mono);font-size:10px">No element deps</span>';
+  sigDepBox.innerHTML = sigDepHtml || '<span style="color:var(--dim);font-family:var(--mono);font-size:10px">No signal deps</span>';
+}
+
+function updateViolations(violations) {
+  const box = document.getElementById('violationsBox');
+  if (!violations.length) {
+    box.innerHTML = '<span style="color:var(--dim);font-family:var(--mono);font-size:10px">None</span>';
+    return;
+  }
+  box.innerHTML = violations.map(v => {
+    if (v.type === 'overflow') return `<div class="viol overflow">overflow: ${v.elementId}</div>`;
+    if (v.type === 'overlap')  return `<div class="viol overlap">overlap: ${v.elements.join(' + ')}</div>`;
+    return '';
+  }).join('');
+}
+
+function buildSceneControls(scene) {
+  const el = document.getElementById('sceneControls');
+  if (scene === 'cascade') {
+    el.innerHTML = `
+      <div class="ph" style="margin-top:4px">Chain Controls</div>
+      <div class="section slider-wrap">
+        <label>Box gap <span id="gapVal">10</span>px
+          <input type="range" id="gapSlider" min="0" max="60" value="10"/>
+        </label>
+      </div>`;
+    document.getElementById('gapSlider').addEventListener('input', function() {
+      const gap = +this.value;
+      document.getElementById('gapVal').textContent = gap;
+      if (!live) return;
+      // Update gap in all chain constraints
+      const cs = live.spec.constraints;
+      ['box1','box2','box3','box4','box5'].forEach((id, i) => {
+        const prev = i === 0 ? 'box0' : `box${i}`;
+        const c = cs.find(c => c.target === id);
+        if (c) c.x = `${prev}.bounds.right + ${gap}`;
+      });
+    });
+  } else if (scene === 'reflow') {
+    el.innerHTML = `
+      <div class="ph" style="margin-top:4px">Container</div>
+      <div class="section slider-wrap">
+        <label>Width <span id="cwVal">760</span>px
+          <input type="range" id="cwSlider" min="300" max="880" value="760"/>
+        </label>
+        <label>Start <span id="csVal">80</span>px
+          <input type="range" id="csSlider" min="20" max="200" value="80"/>
+        </label>
+      </div>`;
+    const update = () => {
+      const w = +document.getElementById('cwSlider').value;
+      const s = +document.getElementById('csSlider').value;
+      document.getElementById('cwVal').textContent = w;
+      document.getElementById('csVal').textContent = s;
+      if (live) live.setCustomSignal('container', { width: w, start: s });
+      // Update the width_label text dynamically
+      const wlEl = live?.spec.elements.find(e => e.id === 'width_label');
+      if (wlEl) wlEl.content = `width: ${w}`;
+    };
+    document.getElementById('cwSlider').addEventListener('input', update);
+    document.getElementById('csSlider').addEventListener('input', update);
+    // Init
+    if (live) live.setCustomSignal('container', { width: 760, start: 80 });
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function startScene(sceneName) {
+  if (live) live.destroy();
+  currentScene = sceneName;
+
+  const spec = JSON.parse(JSON.stringify(scenes[sceneName]));
+  const canvas = document.getElementById('c');
+  live = new SpatialFlowLive(spec, canvas);
+
+  // Init custom signals per scene
+  if (sceneName === 'reflow') {
+    live.setCustomSignal('container', { width: 760, start: 80 });
+  }
+
+  // Update toolbar counts
+  document.getElementById('elemCount').textContent       = `${spec.elements.length} el`;
+  document.getElementById('constraintCount').textContent = `${spec.constraints?.length ?? 0} constraints`;
+
+  // Build initial graph
+  buildGraph(live, { mouse:1, scroll:1, viewport:1, time:1, container:1 });
+
+  // Scene controls
+  buildSceneControls(sceneName);
+
+  let frameN = 0;
+  live.start((state, t, sigs) => {
+    // Signal monitor (every 2 frames to avoid jank)
+    if (frameN % 2 === 0) updateSigMonitor(sigs);
+
+    // Violations
+    if (frameN % 10 === 0) updateViolations(state.violations);
+
+    // FPS
+    const fpsEl = document.getElementById('fpsEl');
+    if (live._fps > 0) fpsEl.textContent = `${live._fps} fps`;
+
+    // Eval log (every 30 frames)
+    if (frameN % 30 === 0) {
+      const constCount = state.constraints?.length ?? 0;
+      const sigCount = Object.keys(sigs).length;
+      const log = document.getElementById('evalLog');
+      log.textContent = [
+        `t        : ${t.toFixed(0)} ms`,
+        `signals  : ${sigCount} roots`,
+        `elements : ${state.elements.length}`,
+        `constraints: ${constCount}`,
+        `eval order: [${state.order?.slice(0,6).join(', ')}${state.order?.length > 6 ? '…' : ''}]`,
+        `violations: ${state.violations.length}`,
+        `mouse    : (${sigs.mouse?.x?.toFixed(0)}, ${sigs.mouse?.y?.toFixed(0)})`,
+      ].join('\n');
+    }
+
+    frameN++;
+  });
+}
+
+// Scene button handlers
+document.querySelectorAll('.scene-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    startScene(btn.dataset.scene);
+  });
+});
+
+// Boot
+startScene('cascade');
+</script>
+</body>
+</html>

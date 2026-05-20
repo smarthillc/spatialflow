@@ -1,0 +1,4012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>SpatialFlow — Slide Deck Engine</title>
+<link rel="icon" href="data:,">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0d0d14;
+    --panel: #111119;
+    --border: #1c1c2e;
+    --surface: #16162a;
+    --text: #c8c8d8;
+    --text-dim: #6a6a80;
+    --accent: #7eb8ff;
+    --accent2: #4ecdc4;
+    --warn: #ff6b6b;
+    --success: #50e890;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --sans: 'DM Sans', system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); height: 100vh; display: grid; grid-template-columns: 320px 1fr 320px; overflow: hidden; }
+
+  /* --- Left panel: controls --- */
+  .panel { background: var(--panel); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  .panel:last-child { border-right: none; border-left: 1px solid var(--border); }
+
+  .panel-header { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+  .panel-header::before { content: ''; width: 3px; height: 14px; background: var(--accent); border-radius: 2px; }
+
+  h1 { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn { font-family: var(--mono); font-size: 11px; padding: 6px 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); border-radius: 4px; cursor: pointer; transition: all 0.15s; }
+  .btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(126,184,255,0.06); }
+  .btn.active { color: var(--accent); border-color: var(--accent); background: rgba(126,184,255,0.1); }
+
+  label { display: block; font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
+  label span.val { color: var(--accent); float: right; }
+
+  select, input[type=range] { width: 100%; margin-top: 4px; }
+  select { font-family: var(--mono); font-size: 11px; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 4px; }
+  input[type=range] { -webkit-appearance: none; height: 4px; background: var(--border); border-radius: 2px; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--accent); border-radius: 50%; cursor: pointer; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
+  .section-title { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 8px; }
+
+  .controls-group { display: flex; flex-direction: column; gap: 8px; }
+
+  /* --- Center: canvas --- */
+  .canvas-wrap { display: flex; flex-direction: column; background: #0a0a10; position: relative; }
+  .canvas-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+  .canvas-toolbar .badge { background: var(--surface); border: 1px solid var(--border); padding: 2px 8px; border-radius: 3px; font-size: 10px; }
+  .badge.pretext { color: var(--success); border-color: rgba(80,232,144,0.3); }
+  .badge.canvas { color: var(--warn); border-color: rgba(255,107,107,0.3); }
+  canvas { display: block; flex: 1; cursor: crosshair; }
+
+  /* --- Right panel: inspector + command --- */
+  .log-box { font-family: var(--mono); font-size: 10px; line-height: 1.5; color: var(--text-dim); background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 4px; padding: 8px; height: 120px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+
+  .violation { font-family: var(--mono); font-size: 10px; padding: 4px 8px; margin: 2px 0; border-radius: 3px; }
+  .violation.overflow { background: rgba(255,107,107,0.08); border-left: 2px solid var(--warn); color: var(--warn); }
+  .violation.overlap { background: rgba(255,180,50,0.08); border-left: 2px solid #ffb432; color: #ffb432; }
+
+  .graph-box { font-family: var(--mono); font-size: 10px; color: var(--text-dim); background: rgba(126,184,255,0.03); border: 1px solid rgba(126,184,255,0.1); border-radius: 4px; padding: 8px; height: 140px; overflow-y: auto; white-space: pre-wrap; }
+
+  /* Command input */
+  .cmd-input-wrap { display: flex; gap: 6px; }
+  .cmd-input { flex: 1; font-family: var(--mono); font-size: 11px; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; outline: none; resize: vertical; min-height: 60px; }
+  .cmd-input:focus { border-color: var(--accent); }
+  .cmd-send { font-family: var(--mono); font-size: 11px; padding: 8px 14px; background: rgba(126,184,255,0.1); border: 1px solid rgba(126,184,255,0.3); color: var(--accent); border-radius: 4px; cursor: pointer; align-self: flex-end; }
+  .cmd-send:hover { background: rgba(126,184,255,0.2); }
+
+  .cmd-log { font-family: var(--mono); font-size: 10px; color: var(--text-dim); max-height: 100px; overflow-y: auto; }
+  .cmd-log .ok { color: var(--success); }
+  .cmd-log .err { color: var(--warn); }
+
+  .stat { display: inline-flex; align-items: center; gap: 4px; }
+  .stat-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .stat-dot.on { background: var(--success); box-shadow: 0 0 6px rgba(80,232,144,0.5); }
+  .stat-dot.off { background: var(--warn); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- LEFT PANEL -->
+<div class="panel" id="leftPanel">
+  <h1>Spatial<span>Flow</span> v2</h1>
+
+  <div class="section">
+    <div class="section-title">Demo</div>
+    <select id="demoSelect">
+      <option value="slide">Slide: title + body + image</option>
+      <option value="threeCol">3-Column Comparison</option>
+      <option value="hero">Hero: box + dot + label</option>
+      <option value="chain">Chain: N linked boxes</option>
+      <option value="grid">Grid: rows × cols</option>
+      <option value="autoframe">Auto-Layout Frame</option>
+      <option value="connector">Connectors</option>
+    </select>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Playback</div>
+    <div class="btn-row">
+      <button class="btn" id="playBtn">▶ Play</button>
+      <button class="btn" id="pauseBtn">⏸ Pause</button>
+      <button class="btn" id="seekBtn">↺ Reset</button>
+    </div>
+    <label style="margin-top:8px">Duration (ms) <span class="val" id="durVal">3000</span>
+      <input id="duration" type="range" min="0" max="8000" step="100" value="3000"/>
+    </label>
+  </div>
+
+  <div class="section" id="heroControls" style="display:none">
+    <div class="section-title">Hero Controls</div>
+    <div class="controls-group">
+      <label>Travel (px) <span class="val" id="travelVal">250</span>
+        <input id="travel" type="range" min="50" max="600" step="10" value="250"/>
+      </label>
+      <label>Dot offset <span class="val" id="offsetVal">30</span>
+        <input id="offset" type="range" min="-100" max="200" step="5" value="30"/>
+      </label>
+    </div>
+  </div>
+
+  <div class="section" id="chainControls" style="display:none">
+    <div class="section-title">Chain Controls</div>
+    <div class="controls-group">
+      <label>Count <span class="val" id="chainCountVal">8</span>
+        <input id="chainCount" type="range" min="2" max="20" step="1" value="8"/>
+      </label>
+      <label>Gap <span class="val" id="chainGapVal">20</span>
+        <input id="chainGap" type="range" min="0" max="80" step="2" value="20"/>
+      </label>
+    </div>
+  </div>
+
+  <div class="section" id="gridControls" style="display:none">
+    <div class="section-title">Grid Controls</div>
+    <div class="controls-group">
+      <label>Rows <span class="val" id="gridRowsVal">3</span><input id="gridRows" type="range" min="1" max="10" value="3"/></label>
+      <label>Cols <span class="val" id="gridColsVal">4</span><input id="gridCols" type="range" min="1" max="10" value="4"/></label>
+      <label>Row gap <span class="val" id="rowGapVal">16</span><input id="rowGap" type="range" min="0" max="80" step="2" value="16"/></label>
+      <label>Col gap <span class="val" id="colGapVal">16</span><input id="colGap" type="range" min="0" max="80" step="2" value="16"/></label>
+    </div>
+  </div>
+
+  <div class="section" id="slideControls">
+    <div class="section-title">Slide Controls</div>
+    <div class="controls-group">
+      <label>Text width <span class="val" id="slideTextWidthVal">360</span><input id="slideTextWidth" type="range" min="150" max="600" step="10" value="360"/></label>
+      <label>Title size <span class="val" id="slideTitleSizeVal">28</span><input id="slideTitleSize" type="range" min="12" max="72" step="1" value="28"/></label>
+      <label>Body size <span class="val" id="slideBodySizeVal">16</span><input id="slideBodySize" type="range" min="10" max="36" step="1" value="16"/></label>
+    </div>
+  </div>
+
+  <div class="section" id="frameControls" style="display:none">
+    <div class="section-title">Frame Controls</div>
+    <div class="controls-group">
+      <label>Spacing <span class="val" id="frameSpacingVal">16</span><input id="frameSpacing" type="range" min="0" max="60" step="2" value="16"/></label>
+      <label>Padding <span class="val" id="framePaddingVal">20</span><input id="framePadding" type="range" min="0" max="60" step="2" value="20"/></label>
+      <label>Direction
+        <select id="frameDir"><option value="horizontal">Horizontal</option><option value="vertical" selected>Vertical</option></select>
+      </label>
+      <label>Primary align
+        <select id="framePrimary"><option value="start" selected>Start</option><option value="center">Center</option><option value="end">End</option><option value="space-between">Space-between</option></select>
+      </label>
+      <label>Counter align
+        <select id="frameCounter"><option value="start" selected>Start</option><option value="center">Center</option><option value="end">End</option><option value="stretch">Stretch</option></select>
+      </label>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Display</div>
+    <div class="controls-group">
+      <label><input type="checkbox" id="showDag" checked/> Show DAG overlay</label>
+      <label><input type="checkbox" id="showBounds"/> Show bounds</label>
+      <label><input type="checkbox" id="showViolations" checked/> Highlight violations</label>
+    </div>
+  </div>
+</div>
+
+<!-- CENTER: CANVAS -->
+<div class="canvas-wrap">
+  <div class="canvas-toolbar">
+    <span>SpatialFlow v2</span>
+    <span class="badge" id="textEngineBadge">—</span>
+    <span style="flex:1"></span>
+    <span id="fpsDisplay">— fps</span>
+    <span>|</span>
+    <span id="elemCount">0 elements</span>
+    <span>|</span>
+    <span id="constraintCount">0 constraints</span>
+  </div>
+  <canvas id="c" width="960" height="540"></canvas>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel" id="rightPanel">
+  <div class="panel-header">Inspector</div>
+  <div class="section">
+    <div class="section-title">Hovered element</div>
+    <div class="log-box" id="inspectorBox">Hover over an element on the canvas</div>
+  </div>
+
+  <div class="panel-header">Constraint graph</div>
+  <div class="graph-box" id="graphBox"></div>
+
+  <div class="panel-header">Violations</div>
+  <div id="violationsBox" style="max-height:100px; overflow-y:auto; font-size:11px;">
+    <em style="color:var(--text-dim); font-family:var(--mono); font-size:10px;">None</em>
+  </div>
+
+  <div class="panel-header">Mode C — Commands</div>
+  <textarea class="cmd-input" id="cmdInput" placeholder='{"type":"add_element","element":{"id":"box1","type":"rectangle","x":100,"y":100,"width":80,"height":60,"fill":"#4ecdc4"}}'></textarea>
+  <button class="cmd-send" id="cmdSend">Execute ▶</button>
+  <div class="cmd-log" id="cmdLog"></div>
+</div>
+
+<script>
+// Pretext text measurement library (bundled)
+// By Cheng Lou - https://github.com/chenglou/pretext
+(function(global){
+// --- bidi.js ---
+// Simplified bidi metadata helper for the rich prepareWithSegments() path,
+// forked from pdf.js via Sebastian's text-layout. It classifies characters
+// into bidi types, computes embedding levels, and maps them onto prepared
+// segments for custom rendering. The line-breaking engine does not consume
+// these levels.
+const baseTypes = [
+    'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'S', 'B', 'S', 'WS',
+    'B', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN',
+    'BN', 'BN', 'B', 'B', 'B', 'S', 'WS', 'ON', 'ON', 'ET', 'ET', 'ET', 'ON',
+    'ON', 'ON', 'ON', 'ON', 'ON', 'CS', 'ON', 'CS', 'ON', 'EN', 'EN', 'EN',
+    'EN', 'EN', 'EN', 'EN', 'EN', 'EN', 'EN', 'ON', 'ON', 'ON', 'ON', 'ON',
+    'ON', 'ON', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L',
+    'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'ON', 'ON',
+    'ON', 'ON', 'ON', 'ON', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L',
+    'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L',
+    'L', 'ON', 'ON', 'ON', 'ON', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'B', 'BN',
+    'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN',
+    'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN',
+    'BN', 'CS', 'ON', 'ET', 'ET', 'ET', 'ET', 'ON', 'ON', 'ON', 'ON', 'L', 'ON',
+    'ON', 'ON', 'ON', 'ON', 'ET', 'ET', 'EN', 'EN', 'ON', 'L', 'ON', 'ON', 'ON',
+    'EN', 'L', 'ON', 'ON', 'ON', 'ON', 'ON', 'L', 'L', 'L', 'L', 'L', 'L', 'L',
+    'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L',
+    'L', 'ON', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L',
+    'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L',
+    'L', 'L', 'L', 'ON', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L'
+];
+const arabicTypes = [
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'CS', 'AL', 'ON', 'ON', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM',
+    'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AN', 'AN', 'AN', 'AN', 'AN', 'AN', 'AN', 'AN', 'AN',
+    'AN', 'ET', 'AN', 'AN', 'AL', 'AL', 'AL', 'NSM', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM',
+    'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'NSM', 'ON', 'NSM',
+    'NSM', 'NSM', 'NSM', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL',
+    'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL', 'AL'
+];
+function classifyChar(charCode) {
+    if (charCode <= 0x00ff)
+        return baseTypes[charCode];
+    if (0x0590 <= charCode && charCode <= 0x05f4)
+        return 'R';
+    if (0x0600 <= charCode && charCode <= 0x06ff)
+        return arabicTypes[charCode & 0xff];
+    if (0x0700 <= charCode && charCode <= 0x08AC)
+        return 'AL';
+    return 'L';
+}
+function computeBidiLevels(str) {
+    const len = str.length;
+    if (len === 0)
+        return null;
+    // eslint-disable-next-line unicorn/no-new-array
+    const types = new Array(len);
+    let numBidi = 0;
+    for (let i = 0; i < len; i++) {
+        const t = classifyChar(str.charCodeAt(i));
+        if (t === 'R' || t === 'AL' || t === 'AN')
+            numBidi++;
+        types[i] = t;
+    }
+    if (numBidi === 0)
+        return null;
+    const startLevel = (len / numBidi) < 0.3 ? 0 : 1;
+    const levels = new Int8Array(len);
+    for (let i = 0; i < len; i++)
+        levels[i] = startLevel;
+    const e = (startLevel & 1) ? 'R' : 'L';
+    const sor = e;
+    // W1-W7
+    let lastType = sor;
+    for (let i = 0; i < len; i++) {
+        if (types[i] === 'NSM')
+            types[i] = lastType;
+        else
+            lastType = types[i];
+    }
+    lastType = sor;
+    for (let i = 0; i < len; i++) {
+        const t = types[i];
+        if (t === 'EN')
+            types[i] = lastType === 'AL' ? 'AN' : 'EN';
+        else if (t === 'R' || t === 'L' || t === 'AL')
+            lastType = t;
+    }
+    for (let i = 0; i < len; i++) {
+        if (types[i] === 'AL')
+            types[i] = 'R';
+    }
+    for (let i = 1; i < len - 1; i++) {
+        if (types[i] === 'ES' && types[i - 1] === 'EN' && types[i + 1] === 'EN') {
+            types[i] = 'EN';
+        }
+        if (types[i] === 'CS' &&
+            (types[i - 1] === 'EN' || types[i - 1] === 'AN') &&
+            types[i + 1] === types[i - 1]) {
+            types[i] = types[i - 1];
+        }
+    }
+    for (let i = 0; i < len; i++) {
+        if (types[i] !== 'EN')
+            continue;
+        let j;
+        for (j = i - 1; j >= 0 && types[j] === 'ET'; j--)
+            types[j] = 'EN';
+        for (j = i + 1; j < len && types[j] === 'ET'; j++)
+            types[j] = 'EN';
+    }
+    for (let i = 0; i < len; i++) {
+        const t = types[i];
+        if (t === 'WS' || t === 'ES' || t === 'ET' || t === 'CS')
+            types[i] = 'ON';
+    }
+    lastType = sor;
+    for (let i = 0; i < len; i++) {
+        const t = types[i];
+        if (t === 'EN')
+            types[i] = lastType === 'L' ? 'L' : 'EN';
+        else if (t === 'R' || t === 'L')
+            lastType = t;
+    }
+    // N1-N2
+    for (let i = 0; i < len; i++) {
+        if (types[i] !== 'ON')
+            continue;
+        let end = i + 1;
+        while (end < len && types[end] === 'ON')
+            end++;
+        const before = i > 0 ? types[i - 1] : sor;
+        const after = end < len ? types[end] : sor;
+        const bDir = before !== 'L' ? 'R' : 'L';
+        const aDir = after !== 'L' ? 'R' : 'L';
+        if (bDir === aDir) {
+            for (let j = i; j < end; j++)
+                types[j] = bDir;
+        }
+        i = end - 1;
+    }
+    for (let i = 0; i < len; i++) {
+        if (types[i] === 'ON')
+            types[i] = e;
+    }
+    // I1-I2
+    for (let i = 0; i < len; i++) {
+        const t = types[i];
+        if ((levels[i] & 1) === 0) {
+            if (t === 'R')
+                levels[i]++;
+            else if (t === 'AN' || t === 'EN')
+                levels[i] += 2;
+        }
+        else if (t === 'L' || t === 'AN' || t === 'EN') {
+            levels[i]++;
+        }
+    }
+    return levels;
+}
+function computeSegmentLevels(normalized, segStarts) {
+    const bidiLevels = computeBidiLevels(normalized);
+    if (bidiLevels === null)
+        return null;
+    const segLevels = new Int8Array(segStarts.length);
+    for (let i = 0; i < segStarts.length; i++) {
+        segLevels[i] = bidiLevels[segStarts[i]];
+    }
+    return segLevels;
+}
+
+// --- analysis.js ---
+const collapsibleWhitespaceRunRe = /[ \t\n\r\f]+/g;
+const needsWhitespaceNormalizationRe = /[\t\n\r\f]| {2,}|^ | $/;
+function getWhiteSpaceProfile(whiteSpace) {
+    const mode = whiteSpace ?? 'normal';
+    return mode === 'pre-wrap'
+        ? { mode, preserveOrdinarySpaces: true, preserveHardBreaks: true }
+        : { mode, preserveOrdinarySpaces: false, preserveHardBreaks: false };
+}
+function normalizeWhitespaceNormal(text) {
+    if (!needsWhitespaceNormalizationRe.test(text))
+        return text;
+    let normalized = text.replace(collapsibleWhitespaceRunRe, ' ');
+    if (normalized.charCodeAt(0) === 0x20) {
+        normalized = normalized.slice(1);
+    }
+    if (normalized.length > 0 && normalized.charCodeAt(normalized.length - 1) === 0x20) {
+        normalized = normalized.slice(0, -1);
+    }
+    return normalized;
+}
+function normalizeWhitespacePreWrap(text) {
+    if (!/[\r\f]/.test(text))
+        return text.replace(/\r\n/g, '\n');
+    return text
+        .replace(/\r\n/g, '\n')
+        .replace(/[\r\f]/g, '\n');
+}
+let sharedWordSegmenter = null;
+let segmenterLocale;
+function getSharedWordSegmenter() {
+    if (sharedWordSegmenter === null) {
+        sharedWordSegmenter = new Intl.Segmenter(segmenterLocale, { granularity: 'word' });
+    }
+    return sharedWordSegmenter;
+}
+function clearAnalysisCaches() {
+    sharedWordSegmenter = null;
+}
+function setAnalysisLocale(locale) {
+    const nextLocale = locale && locale.length > 0 ? locale : undefined;
+    if (segmenterLocale === nextLocale)
+        return;
+    segmenterLocale = nextLocale;
+    sharedWordSegmenter = null;
+}
+const arabicScriptRe = /\p{Script=Arabic}/u;
+const combiningMarkRe = /\p{M}/u;
+const decimalDigitRe = /\p{Nd}/u;
+function containsArabicScript(text) {
+    return arabicScriptRe.test(text);
+}
+function isCJK(s) {
+    for (const ch of s) {
+        const c = ch.codePointAt(0);
+        if ((c >= 0x4E00 && c <= 0x9FFF) ||
+            (c >= 0x3400 && c <= 0x4DBF) ||
+            (c >= 0x20000 && c <= 0x2A6DF) ||
+            (c >= 0x2A700 && c <= 0x2B73F) ||
+            (c >= 0x2B740 && c <= 0x2B81F) ||
+            (c >= 0x2B820 && c <= 0x2CEAF) ||
+            (c >= 0x2CEB0 && c <= 0x2EBEF) ||
+            (c >= 0x30000 && c <= 0x3134F) ||
+            (c >= 0xF900 && c <= 0xFAFF) ||
+            (c >= 0x2F800 && c <= 0x2FA1F) ||
+            (c >= 0x3000 && c <= 0x303F) ||
+            (c >= 0x3040 && c <= 0x309F) ||
+            (c >= 0x30A0 && c <= 0x30FF) ||
+            (c >= 0xAC00 && c <= 0xD7AF) ||
+            (c >= 0xFF00 && c <= 0xFFEF)) {
+            return true;
+        }
+    }
+    return false;
+}
+const kinsokuStart = new Set([
+    '\uFF0C',
+    '\uFF0E',
+    '\uFF01',
+    '\uFF1A',
+    '\uFF1B',
+    '\uFF1F',
+    '\u3001',
+    '\u3002',
+    '\u30FB',
+    '\uFF09',
+    '\u3015',
+    '\u3009',
+    '\u300B',
+    '\u300D',
+    '\u300F',
+    '\u3011',
+    '\u3017',
+    '\u3019',
+    '\u301B',
+    '\u30FC',
+    '\u3005',
+    '\u303B',
+    '\u309D',
+    '\u309E',
+    '\u30FD',
+    '\u30FE',
+]);
+const kinsokuEnd = new Set([
+    '"',
+    '(', '[', '{',
+    '“', '‘', '«', '‹',
+    '\uFF08',
+    '\u3014',
+    '\u3008',
+    '\u300A',
+    '\u300C',
+    '\u300E',
+    '\u3010',
+    '\u3016',
+    '\u3018',
+    '\u301A',
+]);
+const forwardStickyGlue = new Set([
+    "'", '’',
+]);
+const leftStickyPunctuation = new Set([
+    '.', ',', '!', '?', ':', ';',
+    '\u060C',
+    '\u061B',
+    '\u061F',
+    '\u0964',
+    '\u0965',
+    '\u104A',
+    '\u104B',
+    '\u104C',
+    '\u104D',
+    '\u104F',
+    ')', ']', '}',
+    '%',
+    '"',
+    '”', '’', '»', '›',
+    '…',
+]);
+const arabicNoSpaceTrailingPunctuation = new Set([
+    ':',
+    '.',
+    '\u060C',
+    '\u061B',
+]);
+const myanmarMedialGlue = new Set([
+    '\u104F',
+]);
+const closingQuoteChars = new Set([
+    '”', '’', '»', '›',
+    '\u300D',
+    '\u300F',
+    '\u3011',
+    '\u300B',
+    '\u3009',
+    '\u3015',
+    '\uFF09',
+]);
+function isLeftStickyPunctuationSegment(segment) {
+    if (isEscapedQuoteClusterSegment(segment))
+        return true;
+    let sawPunctuation = false;
+    for (const ch of segment) {
+        if (leftStickyPunctuation.has(ch)) {
+            sawPunctuation = true;
+            continue;
+        }
+        if (sawPunctuation && combiningMarkRe.test(ch))
+            continue;
+        return false;
+    }
+    return sawPunctuation;
+}
+function isCJKLineStartProhibitedSegment(segment) {
+    for (const ch of segment) {
+        if (!kinsokuStart.has(ch) && !leftStickyPunctuation.has(ch))
+            return false;
+    }
+    return segment.length > 0;
+}
+function isForwardStickyClusterSegment(segment) {
+    if (isEscapedQuoteClusterSegment(segment))
+        return true;
+    for (const ch of segment) {
+        if (!kinsokuEnd.has(ch) && !forwardStickyGlue.has(ch) && !combiningMarkRe.test(ch))
+            return false;
+    }
+    return segment.length > 0;
+}
+function isEscapedQuoteClusterSegment(segment) {
+    let sawQuote = false;
+    for (const ch of segment) {
+        if (ch === '\\' || combiningMarkRe.test(ch))
+            continue;
+        if (kinsokuEnd.has(ch) || leftStickyPunctuation.has(ch) || forwardStickyGlue.has(ch)) {
+            sawQuote = true;
+            continue;
+        }
+        return false;
+    }
+    return sawQuote;
+}
+function splitTrailingForwardStickyCluster(text) {
+    const chars = Array.from(text);
+    let splitIndex = chars.length;
+    while (splitIndex > 0) {
+        const ch = chars[splitIndex - 1];
+        if (combiningMarkRe.test(ch)) {
+            splitIndex--;
+            continue;
+        }
+        if (kinsokuEnd.has(ch) || forwardStickyGlue.has(ch)) {
+            splitIndex--;
+            continue;
+        }
+        break;
+    }
+    if (splitIndex <= 0 || splitIndex === chars.length)
+        return null;
+    return {
+        head: chars.slice(0, splitIndex).join(''),
+        tail: chars.slice(splitIndex).join(''),
+    };
+}
+function isRepeatedSingleCharRun(segment, ch) {
+    if (segment.length === 0)
+        return false;
+    for (const part of segment) {
+        if (part !== ch)
+            return false;
+    }
+    return true;
+}
+function endsWithArabicNoSpacePunctuation(segment) {
+    if (!containsArabicScript(segment) || segment.length === 0)
+        return false;
+    return arabicNoSpaceTrailingPunctuation.has(segment[segment.length - 1]);
+}
+function endsWithMyanmarMedialGlue(segment) {
+    if (segment.length === 0)
+        return false;
+    return myanmarMedialGlue.has(segment[segment.length - 1]);
+}
+function splitLeadingSpaceAndMarks(segment) {
+    if (segment.length < 2 || segment[0] !== ' ')
+        return null;
+    const marks = segment.slice(1);
+    if (/^\p{M}+$/u.test(marks)) {
+        return { space: ' ', marks };
+    }
+    return null;
+}
+function endsWithClosingQuote(text) {
+    for (let i = text.length - 1; i >= 0; i--) {
+        const ch = text[i];
+        if (closingQuoteChars.has(ch))
+            return true;
+        if (!leftStickyPunctuation.has(ch))
+            return false;
+    }
+    return false;
+}
+function classifySegmentBreakChar(ch, whiteSpaceProfile) {
+    if (whiteSpaceProfile.preserveOrdinarySpaces || whiteSpaceProfile.preserveHardBreaks) {
+        if (ch === ' ')
+            return 'preserved-space';
+        if (ch === '\t')
+            return 'tab';
+        if (whiteSpaceProfile.preserveHardBreaks && ch === '\n')
+            return 'hard-break';
+    }
+    if (ch === ' ')
+        return 'space';
+    if (ch === '\u00A0' || ch === '\u202F' || ch === '\u2060' || ch === '\uFEFF') {
+        return 'glue';
+    }
+    if (ch === '\u200B')
+        return 'zero-width-break';
+    if (ch === '\u00AD')
+        return 'soft-hyphen';
+    return 'text';
+}
+function joinTextParts(parts) {
+    return parts.length === 1 ? parts[0] : parts.join('');
+}
+function splitSegmentByBreakKind(segment, isWordLike, start, whiteSpaceProfile) {
+    const pieces = [];
+    let currentKind = null;
+    let currentTextParts = [];
+    let currentStart = start;
+    let currentWordLike = false;
+    let offset = 0;
+    for (const ch of segment) {
+        const kind = classifySegmentBreakChar(ch, whiteSpaceProfile);
+        const wordLike = kind === 'text' && isWordLike;
+        if (currentKind !== null && kind === currentKind && wordLike === currentWordLike) {
+            currentTextParts.push(ch);
+            offset += ch.length;
+            continue;
+        }
+        if (currentKind !== null) {
+            pieces.push({
+                text: joinTextParts(currentTextParts),
+                isWordLike: currentWordLike,
+                kind: currentKind,
+                start: currentStart,
+            });
+        }
+        currentKind = kind;
+        currentTextParts = [ch];
+        currentStart = start + offset;
+        currentWordLike = wordLike;
+        offset += ch.length;
+    }
+    if (currentKind !== null) {
+        pieces.push({
+            text: joinTextParts(currentTextParts),
+            isWordLike: currentWordLike,
+            kind: currentKind,
+            start: currentStart,
+        });
+    }
+    return pieces;
+}
+function isTextRunBoundary(kind) {
+    return (kind === 'space' ||
+        kind === 'preserved-space' ||
+        kind === 'zero-width-break' ||
+        kind === 'hard-break');
+}
+const urlSchemeSegmentRe = /^[A-Za-z][A-Za-z0-9+.-]*:$/;
+function isUrlLikeRunStart(segmentation, index) {
+    const text = segmentation.texts[index];
+    if (text.startsWith('www.'))
+        return true;
+    return (urlSchemeSegmentRe.test(text) &&
+        index + 1 < segmentation.len &&
+        segmentation.kinds[index + 1] === 'text' &&
+        segmentation.texts[index + 1] === '//');
+}
+function isUrlQueryBoundarySegment(text) {
+    return text.includes('?') && (text.includes('://') || text.startsWith('www.'));
+}
+function mergeUrlLikeRuns(segmentation) {
+    const texts = segmentation.texts.slice();
+    const isWordLike = segmentation.isWordLike.slice();
+    const kinds = segmentation.kinds.slice();
+    const starts = segmentation.starts.slice();
+    for (let i = 0; i < segmentation.len; i++) {
+        if (kinds[i] !== 'text' || !isUrlLikeRunStart(segmentation, i))
+            continue;
+        const mergedParts = [texts[i]];
+        let j = i + 1;
+        while (j < segmentation.len && !isTextRunBoundary(kinds[j])) {
+            mergedParts.push(texts[j]);
+            isWordLike[i] = true;
+            const endsQueryPrefix = texts[j].includes('?');
+            kinds[j] = 'text';
+            texts[j] = '';
+            j++;
+            if (endsQueryPrefix)
+                break;
+        }
+        texts[i] = joinTextParts(mergedParts);
+    }
+    let compactLen = 0;
+    for (let read = 0; read < texts.length; read++) {
+        const text = texts[read];
+        if (text.length === 0)
+            continue;
+        if (compactLen !== read) {
+            texts[compactLen] = text;
+            isWordLike[compactLen] = isWordLike[read];
+            kinds[compactLen] = kinds[read];
+            starts[compactLen] = starts[read];
+        }
+        compactLen++;
+    }
+    texts.length = compactLen;
+    isWordLike.length = compactLen;
+    kinds.length = compactLen;
+    starts.length = compactLen;
+    return {
+        len: compactLen,
+        texts,
+        isWordLike,
+        kinds,
+        starts,
+    };
+}
+function mergeUrlQueryRuns(segmentation) {
+    const texts = [];
+    const isWordLike = [];
+    const kinds = [];
+    const starts = [];
+    for (let i = 0; i < segmentation.len; i++) {
+        const text = segmentation.texts[i];
+        texts.push(text);
+        isWordLike.push(segmentation.isWordLike[i]);
+        kinds.push(segmentation.kinds[i]);
+        starts.push(segmentation.starts[i]);
+        if (!isUrlQueryBoundarySegment(text))
+            continue;
+        const nextIndex = i + 1;
+        if (nextIndex >= segmentation.len ||
+            isTextRunBoundary(segmentation.kinds[nextIndex])) {
+            continue;
+        }
+        const queryParts = [];
+        const queryStart = segmentation.starts[nextIndex];
+        let j = nextIndex;
+        while (j < segmentation.len && !isTextRunBoundary(segmentation.kinds[j])) {
+            queryParts.push(segmentation.texts[j]);
+            j++;
+        }
+        if (queryParts.length > 0) {
+            texts.push(joinTextParts(queryParts));
+            isWordLike.push(true);
+            kinds.push('text');
+            starts.push(queryStart);
+            i = j - 1;
+        }
+    }
+    return {
+        len: texts.length,
+        texts,
+        isWordLike,
+        kinds,
+        starts,
+    };
+}
+const numericJoinerChars = new Set([
+    ':', '-', '/', '×', ',', '.', '+',
+    '\u2013',
+    '\u2014',
+]);
+const asciiPunctuationChainSegmentRe = /^[A-Za-z0-9_]+[,:;]*$/;
+const asciiPunctuationChainTrailingJoinersRe = /[,:;]+$/;
+function segmentContainsDecimalDigit(text) {
+    for (const ch of text) {
+        if (decimalDigitRe.test(ch))
+            return true;
+    }
+    return false;
+}
+function isNumericRunSegment(text) {
+    if (text.length === 0)
+        return false;
+    for (const ch of text) {
+        if (decimalDigitRe.test(ch) || numericJoinerChars.has(ch))
+            continue;
+        return false;
+    }
+    return true;
+}
+function mergeNumericRuns(segmentation) {
+    const texts = [];
+    const isWordLike = [];
+    const kinds = [];
+    const starts = [];
+    for (let i = 0; i < segmentation.len; i++) {
+        const text = segmentation.texts[i];
+        const kind = segmentation.kinds[i];
+        if (kind === 'text' && isNumericRunSegment(text) && segmentContainsDecimalDigit(text)) {
+            const mergedParts = [text];
+            let j = i + 1;
+            while (j < segmentation.len &&
+                segmentation.kinds[j] === 'text' &&
+                isNumericRunSegment(segmentation.texts[j])) {
+                mergedParts.push(segmentation.texts[j]);
+                j++;
+            }
+            texts.push(joinTextParts(mergedParts));
+            isWordLike.push(true);
+            kinds.push('text');
+            starts.push(segmentation.starts[i]);
+            i = j - 1;
+            continue;
+        }
+        texts.push(text);
+        isWordLike.push(segmentation.isWordLike[i]);
+        kinds.push(kind);
+        starts.push(segmentation.starts[i]);
+    }
+    return {
+        len: texts.length,
+        texts,
+        isWordLike,
+        kinds,
+        starts,
+    };
+}
+function mergeAsciiPunctuationChains(segmentation) {
+    const texts = [];
+    const isWordLike = [];
+    const kinds = [];
+    const starts = [];
+    for (let i = 0; i < segmentation.len; i++) {
+        const text = segmentation.texts[i];
+        const kind = segmentation.kinds[i];
+        const wordLike = segmentation.isWordLike[i];
+        if (kind === 'text' && wordLike && asciiPunctuationChainSegmentRe.test(text)) {
+            const mergedParts = [text];
+            let endsWithJoiners = asciiPunctuationChainTrailingJoinersRe.test(text);
+            let j = i + 1;
+            while (endsWithJoiners &&
+                j < segmentation.len &&
+                segmentation.kinds[j] === 'text' &&
+                segmentation.isWordLike[j] &&
+                asciiPunctuationChainSegmentRe.test(segmentation.texts[j])) {
+                const nextText = segmentation.texts[j];
+                mergedParts.push(nextText);
+                endsWithJoiners = asciiPunctuationChainTrailingJoinersRe.test(nextText);
+                j++;
+            }
+            texts.push(joinTextParts(mergedParts));
+            isWordLike.push(true);
+            kinds.push('text');
+            starts.push(segmentation.starts[i]);
+            i = j - 1;
+            continue;
+        }
+        texts.push(text);
+        isWordLike.push(wordLike);
+        kinds.push(kind);
+        starts.push(segmentation.starts[i]);
+    }
+    return {
+        len: texts.length,
+        texts,
+        isWordLike,
+        kinds,
+        starts,
+    };
+}
+function splitHyphenatedNumericRuns(segmentation) {
+    const texts = [];
+    const isWordLike = [];
+    const kinds = [];
+    const starts = [];
+    for (let i = 0; i < segmentation.len; i++) {
+        const text = segmentation.texts[i];
+        if (segmentation.kinds[i] === 'text' && text.includes('-')) {
+            const parts = text.split('-');
+            let shouldSplit = parts.length > 1;
+            for (let j = 0; j < parts.length; j++) {
+                const part = parts[j];
+                if (!shouldSplit)
+                    break;
+                if (part.length === 0 ||
+                    !segmentContainsDecimalDigit(part) ||
+                    !isNumericRunSegment(part)) {
+                    shouldSplit = false;
+                }
+            }
+            if (shouldSplit) {
+                let offset = 0;
+                for (let j = 0; j < parts.length; j++) {
+                    const part = parts[j];
+                    const splitText = j < parts.length - 1 ? `${part}-` : part;
+                    texts.push(splitText);
+                    isWordLike.push(true);
+                    kinds.push('text');
+                    starts.push(segmentation.starts[i] + offset);
+                    offset += splitText.length;
+                }
+                continue;
+            }
+        }
+        texts.push(text);
+        isWordLike.push(segmentation.isWordLike[i]);
+        kinds.push(segmentation.kinds[i]);
+        starts.push(segmentation.starts[i]);
+    }
+    return {
+        len: texts.length,
+        texts,
+        isWordLike,
+        kinds,
+        starts,
+    };
+}
+function mergeGlueConnectedTextRuns(segmentation) {
+    const texts = [];
+    const isWordLike = [];
+    const kinds = [];
+    const starts = [];
+    let read = 0;
+    while (read < segmentation.len) {
+        const textParts = [segmentation.texts[read]];
+        let wordLike = segmentation.isWordLike[read];
+        let kind = segmentation.kinds[read];
+        let start = segmentation.starts[read];
+        if (kind === 'glue') {
+            const glueParts = [textParts[0]];
+            const glueStart = start;
+            read++;
+            while (read < segmentation.len && segmentation.kinds[read] === 'glue') {
+                glueParts.push(segmentation.texts[read]);
+                read++;
+            }
+            const glueText = joinTextParts(glueParts);
+            if (read < segmentation.len && segmentation.kinds[read] === 'text') {
+                textParts[0] = glueText;
+                textParts.push(segmentation.texts[read]);
+                wordLike = segmentation.isWordLike[read];
+                kind = 'text';
+                start = glueStart;
+                read++;
+            }
+            else {
+                texts.push(glueText);
+                isWordLike.push(false);
+                kinds.push('glue');
+                starts.push(glueStart);
+                continue;
+            }
+        }
+        else {
+            read++;
+        }
+        if (kind === 'text') {
+            while (read < segmentation.len && segmentation.kinds[read] === 'glue') {
+                const glueParts = [];
+                while (read < segmentation.len && segmentation.kinds[read] === 'glue') {
+                    glueParts.push(segmentation.texts[read]);
+                    read++;
+                }
+                const glueText = joinTextParts(glueParts);
+                if (read < segmentation.len && segmentation.kinds[read] === 'text') {
+                    textParts.push(glueText, segmentation.texts[read]);
+                    wordLike = wordLike || segmentation.isWordLike[read];
+                    read++;
+                    continue;
+                }
+                textParts.push(glueText);
+            }
+        }
+        texts.push(joinTextParts(textParts));
+        isWordLike.push(wordLike);
+        kinds.push(kind);
+        starts.push(start);
+    }
+    return {
+        len: texts.length,
+        texts,
+        isWordLike,
+        kinds,
+        starts,
+    };
+}
+function carryTrailingForwardStickyAcrossCJKBoundary(segmentation) {
+    const texts = segmentation.texts.slice();
+    const isWordLike = segmentation.isWordLike.slice();
+    const kinds = segmentation.kinds.slice();
+    const starts = segmentation.starts.slice();
+    for (let i = 0; i < texts.length - 1; i++) {
+        if (kinds[i] !== 'text' || kinds[i + 1] !== 'text')
+            continue;
+        if (!isCJK(texts[i]) || !isCJK(texts[i + 1]))
+            continue;
+        const split = splitTrailingForwardStickyCluster(texts[i]);
+        if (split === null)
+            continue;
+        texts[i] = split.head;
+        texts[i + 1] = split.tail + texts[i + 1];
+        starts[i + 1] = starts[i] + split.head.length;
+    }
+    return {
+        len: texts.length,
+        texts,
+        isWordLike,
+        kinds,
+        starts,
+    };
+}
+function buildMergedSegmentation(normalized, profile, whiteSpaceProfile) {
+    const wordSegmenter = getSharedWordSegmenter();
+    let mergedLen = 0;
+    const mergedTexts = [];
+    const mergedWordLike = [];
+    const mergedKinds = [];
+    const mergedStarts = [];
+    for (const s of wordSegmenter.segment(normalized)) {
+        for (const piece of splitSegmentByBreakKind(s.segment, s.isWordLike ?? false, s.index, whiteSpaceProfile)) {
+            const isText = piece.kind === 'text';
+            if (profile.carryCJKAfterClosingQuote &&
+                isText &&
+                mergedLen > 0 &&
+                mergedKinds[mergedLen - 1] === 'text' &&
+                isCJK(piece.text) &&
+                isCJK(mergedTexts[mergedLen - 1]) &&
+                endsWithClosingQuote(mergedTexts[mergedLen - 1])) {
+                mergedTexts[mergedLen - 1] += piece.text;
+                mergedWordLike[mergedLen - 1] = mergedWordLike[mergedLen - 1] || piece.isWordLike;
+            }
+            else if (isText &&
+                mergedLen > 0 &&
+                mergedKinds[mergedLen - 1] === 'text' &&
+                isCJKLineStartProhibitedSegment(piece.text) &&
+                isCJK(mergedTexts[mergedLen - 1])) {
+                mergedTexts[mergedLen - 1] += piece.text;
+                mergedWordLike[mergedLen - 1] = mergedWordLike[mergedLen - 1] || piece.isWordLike;
+            }
+            else if (isText &&
+                mergedLen > 0 &&
+                mergedKinds[mergedLen - 1] === 'text' &&
+                endsWithMyanmarMedialGlue(mergedTexts[mergedLen - 1])) {
+                mergedTexts[mergedLen - 1] += piece.text;
+                mergedWordLike[mergedLen - 1] = mergedWordLike[mergedLen - 1] || piece.isWordLike;
+            }
+            else if (isText &&
+                mergedLen > 0 &&
+                mergedKinds[mergedLen - 1] === 'text' &&
+                piece.isWordLike &&
+                containsArabicScript(piece.text) &&
+                endsWithArabicNoSpacePunctuation(mergedTexts[mergedLen - 1])) {
+                mergedTexts[mergedLen - 1] += piece.text;
+                mergedWordLike[mergedLen - 1] = true;
+            }
+            else if (isText &&
+                !piece.isWordLike &&
+                mergedLen > 0 &&
+                mergedKinds[mergedLen - 1] === 'text' &&
+                piece.text.length === 1 &&
+                piece.text !== '-' &&
+                piece.text !== '—' &&
+                isRepeatedSingleCharRun(mergedTexts[mergedLen - 1], piece.text)) {
+                mergedTexts[mergedLen - 1] += piece.text;
+            }
+            else if (isText &&
+                !piece.isWordLike &&
+                mergedLen > 0 &&
+                mergedKinds[mergedLen - 1] === 'text' &&
+                (isLeftStickyPunctuationSegment(piece.text) ||
+                    (piece.text === '-' && mergedWordLike[mergedLen - 1]))) {
+                mergedTexts[mergedLen - 1] += piece.text;
+            }
+            else {
+                mergedTexts[mergedLen] = piece.text;
+                mergedWordLike[mergedLen] = piece.isWordLike;
+                mergedKinds[mergedLen] = piece.kind;
+                mergedStarts[mergedLen] = piece.start;
+                mergedLen++;
+            }
+        }
+    }
+    for (let i = 1; i < mergedLen; i++) {
+        if (mergedKinds[i] === 'text' &&
+            !mergedWordLike[i] &&
+            isEscapedQuoteClusterSegment(mergedTexts[i]) &&
+            mergedKinds[i - 1] === 'text') {
+            mergedTexts[i - 1] += mergedTexts[i];
+            mergedWordLike[i - 1] = mergedWordLike[i - 1] || mergedWordLike[i];
+            mergedTexts[i] = '';
+        }
+    }
+    for (let i = mergedLen - 2; i >= 0; i--) {
+        if (mergedKinds[i] === 'text' && !mergedWordLike[i] && isForwardStickyClusterSegment(mergedTexts[i])) {
+            let j = i + 1;
+            while (j < mergedLen && mergedTexts[j] === '')
+                j++;
+            if (j < mergedLen && mergedKinds[j] === 'text') {
+                mergedTexts[j] = mergedTexts[i] + mergedTexts[j];
+                mergedStarts[j] = mergedStarts[i];
+                mergedTexts[i] = '';
+            }
+        }
+    }
+    let compactLen = 0;
+    for (let read = 0; read < mergedLen; read++) {
+        const text = mergedTexts[read];
+        if (text.length === 0)
+            continue;
+        if (compactLen !== read) {
+            mergedTexts[compactLen] = text;
+            mergedWordLike[compactLen] = mergedWordLike[read];
+            mergedKinds[compactLen] = mergedKinds[read];
+            mergedStarts[compactLen] = mergedStarts[read];
+        }
+        compactLen++;
+    }
+    mergedTexts.length = compactLen;
+    mergedWordLike.length = compactLen;
+    mergedKinds.length = compactLen;
+    mergedStarts.length = compactLen;
+    const compacted = mergeGlueConnectedTextRuns({
+        len: compactLen,
+        texts: mergedTexts,
+        isWordLike: mergedWordLike,
+        kinds: mergedKinds,
+        starts: mergedStarts,
+    });
+    const withMergedUrls = carryTrailingForwardStickyAcrossCJKBoundary(mergeAsciiPunctuationChains(splitHyphenatedNumericRuns(mergeNumericRuns(mergeUrlQueryRuns(mergeUrlLikeRuns(compacted))))));
+    for (let i = 0; i < withMergedUrls.len - 1; i++) {
+        const split = splitLeadingSpaceAndMarks(withMergedUrls.texts[i]);
+        if (split === null)
+            continue;
+        if ((withMergedUrls.kinds[i] !== 'space' && withMergedUrls.kinds[i] !== 'preserved-space') ||
+            withMergedUrls.kinds[i + 1] !== 'text' ||
+            !containsArabicScript(withMergedUrls.texts[i + 1])) {
+            continue;
+        }
+        withMergedUrls.texts[i] = split.space;
+        withMergedUrls.isWordLike[i] = false;
+        withMergedUrls.kinds[i] = withMergedUrls.kinds[i] === 'preserved-space' ? 'preserved-space' : 'space';
+        withMergedUrls.texts[i + 1] = split.marks + withMergedUrls.texts[i + 1];
+        withMergedUrls.starts[i + 1] = withMergedUrls.starts[i] + split.space.length;
+    }
+    return withMergedUrls;
+}
+function compileAnalysisChunks(segmentation, whiteSpaceProfile) {
+    if (segmentation.len === 0)
+        return [];
+    if (!whiteSpaceProfile.preserveHardBreaks) {
+        return [{
+                startSegmentIndex: 0,
+                endSegmentIndex: segmentation.len,
+                consumedEndSegmentIndex: segmentation.len,
+            }];
+    }
+    const chunks = [];
+    let startSegmentIndex = 0;
+    for (let i = 0; i < segmentation.len; i++) {
+        if (segmentation.kinds[i] !== 'hard-break')
+            continue;
+        chunks.push({
+            startSegmentIndex,
+            endSegmentIndex: i,
+            consumedEndSegmentIndex: i + 1,
+        });
+        startSegmentIndex = i + 1;
+    }
+    if (startSegmentIndex < segmentation.len) {
+        chunks.push({
+            startSegmentIndex,
+            endSegmentIndex: segmentation.len,
+            consumedEndSegmentIndex: segmentation.len,
+        });
+    }
+    return chunks;
+}
+function analyzeText(text, profile, whiteSpace = 'normal') {
+    const whiteSpaceProfile = getWhiteSpaceProfile(whiteSpace);
+    const normalized = whiteSpaceProfile.mode === 'pre-wrap'
+        ? normalizeWhitespacePreWrap(text)
+        : normalizeWhitespaceNormal(text);
+    if (normalized.length === 0) {
+        return {
+            normalized,
+            chunks: [],
+            len: 0,
+            texts: [],
+            isWordLike: [],
+            kinds: [],
+            starts: [],
+        };
+    }
+    const segmentation = buildMergedSegmentation(normalized, profile, whiteSpaceProfile);
+    return {
+        normalized,
+        chunks: compileAnalysisChunks(segmentation, whiteSpaceProfile),
+        ...segmentation,
+    };
+}
+
+// --- measurement.js ---
+
+let measureContext = null;
+const segmentMetricCaches = new Map();
+let cachedEngineProfile = null;
+const emojiPresentationRe = /\p{Emoji_Presentation}/u;
+const maybeEmojiRe = /[\p{Emoji_Presentation}\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u20E3]/u;
+let sharedGraphemeSegmenter = null;
+const emojiCorrectionCache = new Map();
+function getMeasureContext() {
+    if (measureContext !== null)
+        return measureContext;
+    if (typeof OffscreenCanvas !== 'undefined') {
+        measureContext = new OffscreenCanvas(1, 1).getContext('2d');
+        return measureContext;
+    }
+    if (typeof document !== 'undefined') {
+        measureContext = document.createElement('canvas').getContext('2d');
+        return measureContext;
+    }
+    throw new Error('Text measurement requires OffscreenCanvas or a DOM canvas context.');
+}
+function getSegmentMetricCache(font) {
+    let cache = segmentMetricCaches.get(font);
+    if (!cache) {
+        cache = new Map();
+        segmentMetricCaches.set(font, cache);
+    }
+    return cache;
+}
+function getSegmentMetrics(seg, cache) {
+    let metrics = cache.get(seg);
+    if (metrics === undefined) {
+        const ctx = getMeasureContext();
+        metrics = {
+            width: ctx.measureText(seg).width,
+            containsCJK: isCJK(seg),
+        };
+        cache.set(seg, metrics);
+    }
+    return metrics;
+}
+function getEngineProfile() {
+    if (cachedEngineProfile !== null)
+        return cachedEngineProfile;
+    if (typeof navigator === 'undefined') {
+        cachedEngineProfile = {
+            lineFitEpsilon: 0.005,
+            carryCJKAfterClosingQuote: false,
+            preferPrefixWidthsForBreakableRuns: false,
+            preferEarlySoftHyphenBreak: false,
+        };
+        return cachedEngineProfile;
+    }
+    const ua = navigator.userAgent;
+    const vendor = navigator.vendor;
+    const isSafari = vendor === 'Apple Computer, Inc.' &&
+        ua.includes('Safari/') &&
+        !ua.includes('Chrome/') &&
+        !ua.includes('Chromium/') &&
+        !ua.includes('CriOS/') &&
+        !ua.includes('FxiOS/') &&
+        !ua.includes('EdgiOS/');
+    const isChromium = ua.includes('Chrome/') ||
+        ua.includes('Chromium/') ||
+        ua.includes('CriOS/') ||
+        ua.includes('Edg/');
+    cachedEngineProfile = {
+        lineFitEpsilon: isSafari ? 1 / 64 : 0.005,
+        carryCJKAfterClosingQuote: isChromium,
+        preferPrefixWidthsForBreakableRuns: isSafari,
+        preferEarlySoftHyphenBreak: isSafari,
+    };
+    return cachedEngineProfile;
+}
+function parseFontSize(font) {
+    const m = font.match(/(\d+(?:\.\d+)?)\s*px/);
+    return m ? parseFloat(m[1]) : 16;
+}
+function getSharedGraphemeSegmenter() {
+    if (sharedGraphemeSegmenter === null) {
+        sharedGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+    }
+    return sharedGraphemeSegmenter;
+}
+function isEmojiGrapheme(g) {
+    return emojiPresentationRe.test(g) || g.includes('\uFE0F');
+}
+function textMayContainEmoji(text) {
+    return maybeEmojiRe.test(text);
+}
+function getEmojiCorrection(font, fontSize) {
+    let correction = emojiCorrectionCache.get(font);
+    if (correction !== undefined)
+        return correction;
+    const ctx = getMeasureContext();
+    ctx.font = font;
+    const canvasW = ctx.measureText('\u{1F600}').width;
+    correction = 0;
+    if (canvasW > fontSize + 0.5 &&
+        typeof document !== 'undefined' &&
+        document.body !== null) {
+        const span = document.createElement('span');
+        span.style.font = font;
+        span.style.display = 'inline-block';
+        span.style.visibility = 'hidden';
+        span.style.position = 'absolute';
+        span.textContent = '\u{1F600}';
+        document.body.appendChild(span);
+        const domW = span.getBoundingClientRect().width;
+        document.body.removeChild(span);
+        if (canvasW - domW > 0.5) {
+            correction = canvasW - domW;
+        }
+    }
+    emojiCorrectionCache.set(font, correction);
+    return correction;
+}
+function countEmojiGraphemes(text) {
+    let count = 0;
+    const graphemeSegmenter = getSharedGraphemeSegmenter();
+    for (const g of graphemeSegmenter.segment(text)) {
+        if (isEmojiGrapheme(g.segment))
+            count++;
+    }
+    return count;
+}
+function getEmojiCount(seg, metrics) {
+    if (metrics.emojiCount === undefined) {
+        metrics.emojiCount = countEmojiGraphemes(seg);
+    }
+    return metrics.emojiCount;
+}
+function getCorrectedSegmentWidth(seg, metrics, emojiCorrection) {
+    if (emojiCorrection === 0)
+        return metrics.width;
+    return metrics.width - getEmojiCount(seg, metrics) * emojiCorrection;
+}
+function getSegmentGraphemeWidths(seg, metrics, cache, emojiCorrection) {
+    if (metrics.graphemeWidths !== undefined)
+        return metrics.graphemeWidths;
+    const widths = [];
+    const graphemeSegmenter = getSharedGraphemeSegmenter();
+    for (const gs of graphemeSegmenter.segment(seg)) {
+        const graphemeMetrics = getSegmentMetrics(gs.segment, cache);
+        widths.push(getCorrectedSegmentWidth(gs.segment, graphemeMetrics, emojiCorrection));
+    }
+    metrics.graphemeWidths = widths.length > 1 ? widths : null;
+    return metrics.graphemeWidths;
+}
+function getSegmentGraphemePrefixWidths(seg, metrics, cache, emojiCorrection) {
+    if (metrics.graphemePrefixWidths !== undefined)
+        return metrics.graphemePrefixWidths;
+    const prefixWidths = [];
+    const graphemeSegmenter = getSharedGraphemeSegmenter();
+    let prefix = '';
+    for (const gs of graphemeSegmenter.segment(seg)) {
+        prefix += gs.segment;
+        const prefixMetrics = getSegmentMetrics(prefix, cache);
+        prefixWidths.push(getCorrectedSegmentWidth(prefix, prefixMetrics, emojiCorrection));
+    }
+    metrics.graphemePrefixWidths = prefixWidths.length > 1 ? prefixWidths : null;
+    return metrics.graphemePrefixWidths;
+}
+function getFontMeasurementState(font, needsEmojiCorrection) {
+    const ctx = getMeasureContext();
+    ctx.font = font;
+    const cache = getSegmentMetricCache(font);
+    const fontSize = parseFontSize(font);
+    const emojiCorrection = needsEmojiCorrection ? getEmojiCorrection(font, fontSize) : 0;
+    return { cache, fontSize, emojiCorrection };
+}
+function clearMeasurementCaches() {
+    segmentMetricCaches.clear();
+    emojiCorrectionCache.clear();
+    sharedGraphemeSegmenter = null;
+}
+
+// --- line-break.js ---
+
+function canBreakAfter(kind) {
+    return (kind === 'space' ||
+        kind === 'preserved-space' ||
+        kind === 'tab' ||
+        kind === 'zero-width-break' ||
+        kind === 'soft-hyphen');
+}
+function normalizeSimpleLineStartSegmentIndex(prepared, segmentIndex) {
+    while (segmentIndex < prepared.widths.length) {
+        const kind = prepared.kinds[segmentIndex];
+        if (kind !== 'space' && kind !== 'zero-width-break' && kind !== 'soft-hyphen')
+            break;
+        segmentIndex++;
+    }
+    return segmentIndex;
+}
+function getTabAdvance(lineWidth, tabStopAdvance) {
+    if (tabStopAdvance <= 0)
+        return 0;
+    const remainder = lineWidth % tabStopAdvance;
+    if (Math.abs(remainder) <= 1e-6)
+        return tabStopAdvance;
+    return tabStopAdvance - remainder;
+}
+function getBreakableAdvance(graphemeWidths, graphemePrefixWidths, graphemeIndex, preferPrefixWidths) {
+    if (!preferPrefixWidths || graphemePrefixWidths === null) {
+        return graphemeWidths[graphemeIndex];
+    }
+    return graphemePrefixWidths[graphemeIndex] - (graphemeIndex > 0 ? graphemePrefixWidths[graphemeIndex - 1] : 0);
+}
+function fitSoftHyphenBreak(graphemeWidths, initialWidth, maxWidth, lineFitEpsilon, discretionaryHyphenWidth, cumulativeWidths) {
+    let fitCount = 0;
+    let fittedWidth = initialWidth;
+    while (fitCount < graphemeWidths.length) {
+        const nextWidth = cumulativeWidths
+            ? initialWidth + graphemeWidths[fitCount]
+            : fittedWidth + graphemeWidths[fitCount];
+        const nextLineWidth = fitCount + 1 < graphemeWidths.length
+            ? nextWidth + discretionaryHyphenWidth
+            : nextWidth;
+        if (nextLineWidth > maxWidth + lineFitEpsilon)
+            break;
+        fittedWidth = nextWidth;
+        fitCount++;
+    }
+    return { fitCount, fittedWidth };
+}
+function findChunkIndexForStart(prepared, segmentIndex) {
+    let lo = 0;
+    let hi = prepared.chunks.length;
+    while (lo < hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        if (segmentIndex < prepared.chunks[mid].consumedEndSegmentIndex) {
+            hi = mid;
+        }
+        else {
+            lo = mid + 1;
+        }
+    }
+    return lo < prepared.chunks.length ? lo : -1;
+}
+function normalizeLineStartWithChunk(prepared, start) {
+    let segmentIndex = start.segmentIndex;
+    const graphemeIndex = start.graphemeIndex;
+    if (segmentIndex >= prepared.widths.length)
+        return null;
+    const chunkIndex = findChunkIndexForStart(prepared, segmentIndex);
+    if (chunkIndex < 0)
+        return null;
+    if (graphemeIndex > 0) {
+        return { cursor: start, chunkIndex };
+    }
+    const chunk = prepared.chunks[chunkIndex];
+    if (chunk.startSegmentIndex === chunk.endSegmentIndex && segmentIndex === chunk.startSegmentIndex) {
+        return { cursor: { segmentIndex, graphemeIndex: 0 }, chunkIndex };
+    }
+    if (segmentIndex < chunk.startSegmentIndex)
+        segmentIndex = chunk.startSegmentIndex;
+    while (segmentIndex < chunk.endSegmentIndex) {
+        const kind = prepared.kinds[segmentIndex];
+        if (kind !== 'space' && kind !== 'zero-width-break' && kind !== 'soft-hyphen') {
+            return { cursor: { segmentIndex, graphemeIndex: 0 }, chunkIndex };
+        }
+        segmentIndex++;
+    }
+    if (chunk.consumedEndSegmentIndex >= prepared.widths.length)
+        return null;
+    return {
+        cursor: { segmentIndex: chunk.consumedEndSegmentIndex, graphemeIndex: 0 },
+        chunkIndex: chunkIndex + 1,
+    };
+}
+function normalizeLineStart(prepared, start) {
+    return normalizeLineStartWithChunk(prepared, start)?.cursor ?? null;
+}
+function countPreparedLines(prepared, maxWidth) {
+    if (prepared.simpleLineWalkFastPath) {
+        return countPreparedLinesSimple(prepared, maxWidth);
+    }
+    return walkPreparedLines(prepared, maxWidth);
+}
+function countPreparedLinesSimple(prepared, maxWidth) {
+    return walkPreparedLinesSimple(prepared, maxWidth);
+}
+function walkPreparedLinesSimple(prepared, maxWidth, onLine) {
+    const { widths, kinds, breakableWidths, breakablePrefixWidths } = prepared;
+    if (widths.length === 0)
+        return 0;
+    const engineProfile = getEngineProfile();
+    const lineFitEpsilon = engineProfile.lineFitEpsilon;
+    let lineCount = 0;
+    let lineW = 0;
+    let hasContent = false;
+    let lineStartSegmentIndex = 0;
+    let lineStartGraphemeIndex = 0;
+    let lineEndSegmentIndex = 0;
+    let lineEndGraphemeIndex = 0;
+    let pendingBreakSegmentIndex = -1;
+    let pendingBreakPaintWidth = 0;
+    function clearPendingBreak() {
+        pendingBreakSegmentIndex = -1;
+        pendingBreakPaintWidth = 0;
+    }
+    function emitCurrentLine(endSegmentIndex = lineEndSegmentIndex, endGraphemeIndex = lineEndGraphemeIndex, width = lineW) {
+        lineCount++;
+        onLine?.({
+            startSegmentIndex: lineStartSegmentIndex,
+            startGraphemeIndex: lineStartGraphemeIndex,
+            endSegmentIndex,
+            endGraphemeIndex,
+            width,
+        });
+        lineW = 0;
+        hasContent = false;
+        clearPendingBreak();
+    }
+    function startLineAtSegment(segmentIndex, width) {
+        hasContent = true;
+        lineStartSegmentIndex = segmentIndex;
+        lineStartGraphemeIndex = 0;
+        lineEndSegmentIndex = segmentIndex + 1;
+        lineEndGraphemeIndex = 0;
+        lineW = width;
+    }
+    function startLineAtGrapheme(segmentIndex, graphemeIndex, width) {
+        hasContent = true;
+        lineStartSegmentIndex = segmentIndex;
+        lineStartGraphemeIndex = graphemeIndex;
+        lineEndSegmentIndex = segmentIndex;
+        lineEndGraphemeIndex = graphemeIndex + 1;
+        lineW = width;
+    }
+    function appendWholeSegment(segmentIndex, width) {
+        if (!hasContent) {
+            startLineAtSegment(segmentIndex, width);
+            return;
+        }
+        lineW += width;
+        lineEndSegmentIndex = segmentIndex + 1;
+        lineEndGraphemeIndex = 0;
+    }
+    function updatePendingBreak(segmentIndex, segmentWidth) {
+        if (!canBreakAfter(kinds[segmentIndex]))
+            return;
+        pendingBreakSegmentIndex = segmentIndex + 1;
+        pendingBreakPaintWidth = lineW - segmentWidth;
+    }
+    function appendBreakableSegment(segmentIndex) {
+        appendBreakableSegmentFrom(segmentIndex, 0);
+    }
+    function appendBreakableSegmentFrom(segmentIndex, startGraphemeIndex) {
+        const gWidths = breakableWidths[segmentIndex];
+        const gPrefixWidths = breakablePrefixWidths[segmentIndex] ?? null;
+        for (let g = startGraphemeIndex; g < gWidths.length; g++) {
+            const gw = getBreakableAdvance(gWidths, gPrefixWidths, g, engineProfile.preferPrefixWidthsForBreakableRuns);
+            if (!hasContent) {
+                startLineAtGrapheme(segmentIndex, g, gw);
+                continue;
+            }
+            if (lineW + gw > maxWidth + lineFitEpsilon) {
+                emitCurrentLine();
+                startLineAtGrapheme(segmentIndex, g, gw);
+            }
+            else {
+                lineW += gw;
+                lineEndSegmentIndex = segmentIndex;
+                lineEndGraphemeIndex = g + 1;
+            }
+        }
+        if (hasContent && lineEndSegmentIndex === segmentIndex && lineEndGraphemeIndex === gWidths.length) {
+            lineEndSegmentIndex = segmentIndex + 1;
+            lineEndGraphemeIndex = 0;
+        }
+    }
+    let i = 0;
+    while (i < widths.length) {
+        if (!hasContent) {
+            i = normalizeSimpleLineStartSegmentIndex(prepared, i);
+            if (i >= widths.length)
+                break;
+        }
+        const w = widths[i];
+        const kind = kinds[i];
+        if (!hasContent) {
+            if (w > maxWidth && breakableWidths[i] !== null) {
+                appendBreakableSegment(i);
+            }
+            else {
+                startLineAtSegment(i, w);
+            }
+            updatePendingBreak(i, w);
+            i++;
+            continue;
+        }
+        const newW = lineW + w;
+        if (newW > maxWidth + lineFitEpsilon) {
+            if (canBreakAfter(kind)) {
+                appendWholeSegment(i, w);
+                emitCurrentLine(i + 1, 0, lineW - w);
+                i++;
+                continue;
+            }
+            if (pendingBreakSegmentIndex >= 0) {
+                if (lineEndSegmentIndex > pendingBreakSegmentIndex ||
+                    (lineEndSegmentIndex === pendingBreakSegmentIndex && lineEndGraphemeIndex > 0)) {
+                    emitCurrentLine();
+                    continue;
+                }
+                emitCurrentLine(pendingBreakSegmentIndex, 0, pendingBreakPaintWidth);
+                continue;
+            }
+            if (w > maxWidth && breakableWidths[i] !== null) {
+                emitCurrentLine();
+                appendBreakableSegment(i);
+                i++;
+                continue;
+            }
+            emitCurrentLine();
+            continue;
+        }
+        appendWholeSegment(i, w);
+        updatePendingBreak(i, w);
+        i++;
+    }
+    if (hasContent)
+        emitCurrentLine();
+    return lineCount;
+}
+function walkPreparedLines(prepared, maxWidth, onLine) {
+    if (prepared.simpleLineWalkFastPath) {
+        return walkPreparedLinesSimple(prepared, maxWidth, onLine);
+    }
+    const { widths, lineEndFitAdvances, lineEndPaintAdvances, kinds, breakableWidths, breakablePrefixWidths, discretionaryHyphenWidth, tabStopAdvance, chunks, } = prepared;
+    if (widths.length === 0 || chunks.length === 0)
+        return 0;
+    const engineProfile = getEngineProfile();
+    const lineFitEpsilon = engineProfile.lineFitEpsilon;
+    let lineCount = 0;
+    let lineW = 0;
+    let hasContent = false;
+    let lineStartSegmentIndex = 0;
+    let lineStartGraphemeIndex = 0;
+    let lineEndSegmentIndex = 0;
+    let lineEndGraphemeIndex = 0;
+    let pendingBreakSegmentIndex = -1;
+    let pendingBreakFitWidth = 0;
+    let pendingBreakPaintWidth = 0;
+    let pendingBreakKind = null;
+    function clearPendingBreak() {
+        pendingBreakSegmentIndex = -1;
+        pendingBreakFitWidth = 0;
+        pendingBreakPaintWidth = 0;
+        pendingBreakKind = null;
+    }
+    function emitCurrentLine(endSegmentIndex = lineEndSegmentIndex, endGraphemeIndex = lineEndGraphemeIndex, width = lineW) {
+        lineCount++;
+        onLine?.({
+            startSegmentIndex: lineStartSegmentIndex,
+            startGraphemeIndex: lineStartGraphemeIndex,
+            endSegmentIndex,
+            endGraphemeIndex,
+            width,
+        });
+        lineW = 0;
+        hasContent = false;
+        clearPendingBreak();
+    }
+    function startLineAtSegment(segmentIndex, width) {
+        hasContent = true;
+        lineStartSegmentIndex = segmentIndex;
+        lineStartGraphemeIndex = 0;
+        lineEndSegmentIndex = segmentIndex + 1;
+        lineEndGraphemeIndex = 0;
+        lineW = width;
+    }
+    function startLineAtGrapheme(segmentIndex, graphemeIndex, width) {
+        hasContent = true;
+        lineStartSegmentIndex = segmentIndex;
+        lineStartGraphemeIndex = graphemeIndex;
+        lineEndSegmentIndex = segmentIndex;
+        lineEndGraphemeIndex = graphemeIndex + 1;
+        lineW = width;
+    }
+    function appendWholeSegment(segmentIndex, width) {
+        if (!hasContent) {
+            startLineAtSegment(segmentIndex, width);
+            return;
+        }
+        lineW += width;
+        lineEndSegmentIndex = segmentIndex + 1;
+        lineEndGraphemeIndex = 0;
+    }
+    function updatePendingBreakForWholeSegment(segmentIndex, segmentWidth) {
+        if (!canBreakAfter(kinds[segmentIndex]))
+            return;
+        const fitAdvance = kinds[segmentIndex] === 'tab' ? 0 : lineEndFitAdvances[segmentIndex];
+        const paintAdvance = kinds[segmentIndex] === 'tab' ? segmentWidth : lineEndPaintAdvances[segmentIndex];
+        pendingBreakSegmentIndex = segmentIndex + 1;
+        pendingBreakFitWidth = lineW - segmentWidth + fitAdvance;
+        pendingBreakPaintWidth = lineW - segmentWidth + paintAdvance;
+        pendingBreakKind = kinds[segmentIndex];
+    }
+    function appendBreakableSegment(segmentIndex) {
+        appendBreakableSegmentFrom(segmentIndex, 0);
+    }
+    function appendBreakableSegmentFrom(segmentIndex, startGraphemeIndex) {
+        const gWidths = breakableWidths[segmentIndex];
+        const gPrefixWidths = breakablePrefixWidths[segmentIndex] ?? null;
+        for (let g = startGraphemeIndex; g < gWidths.length; g++) {
+            const gw = getBreakableAdvance(gWidths, gPrefixWidths, g, engineProfile.preferPrefixWidthsForBreakableRuns);
+            if (!hasContent) {
+                startLineAtGrapheme(segmentIndex, g, gw);
+                continue;
+            }
+            if (lineW + gw > maxWidth + lineFitEpsilon) {
+                emitCurrentLine();
+                startLineAtGrapheme(segmentIndex, g, gw);
+            }
+            else {
+                lineW += gw;
+                lineEndSegmentIndex = segmentIndex;
+                lineEndGraphemeIndex = g + 1;
+            }
+        }
+        if (hasContent && lineEndSegmentIndex === segmentIndex && lineEndGraphemeIndex === gWidths.length) {
+            lineEndSegmentIndex = segmentIndex + 1;
+            lineEndGraphemeIndex = 0;
+        }
+    }
+    function continueSoftHyphenBreakableSegment(segmentIndex) {
+        if (pendingBreakKind !== 'soft-hyphen')
+            return false;
+        const gWidths = breakableWidths[segmentIndex];
+        if (gWidths === null)
+            return false;
+        const fitWidths = engineProfile.preferPrefixWidthsForBreakableRuns
+            ? breakablePrefixWidths[segmentIndex] ?? gWidths
+            : gWidths;
+        const usesPrefixWidths = fitWidths !== gWidths;
+        const { fitCount, fittedWidth } = fitSoftHyphenBreak(fitWidths, lineW, maxWidth, lineFitEpsilon, discretionaryHyphenWidth, usesPrefixWidths);
+        if (fitCount === 0)
+            return false;
+        lineW = fittedWidth;
+        lineEndSegmentIndex = segmentIndex;
+        lineEndGraphemeIndex = fitCount;
+        clearPendingBreak();
+        if (fitCount === gWidths.length) {
+            lineEndSegmentIndex = segmentIndex + 1;
+            lineEndGraphemeIndex = 0;
+            return true;
+        }
+        emitCurrentLine(segmentIndex, fitCount, fittedWidth + discretionaryHyphenWidth);
+        appendBreakableSegmentFrom(segmentIndex, fitCount);
+        return true;
+    }
+    function emitEmptyChunk(chunk) {
+        lineCount++;
+        onLine?.({
+            startSegmentIndex: chunk.startSegmentIndex,
+            startGraphemeIndex: 0,
+            endSegmentIndex: chunk.consumedEndSegmentIndex,
+            endGraphemeIndex: 0,
+            width: 0,
+        });
+        clearPendingBreak();
+    }
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        const chunk = chunks[chunkIndex];
+        if (chunk.startSegmentIndex === chunk.endSegmentIndex) {
+            emitEmptyChunk(chunk);
+            continue;
+        }
+        hasContent = false;
+        lineW = 0;
+        lineStartSegmentIndex = chunk.startSegmentIndex;
+        lineStartGraphemeIndex = 0;
+        lineEndSegmentIndex = chunk.startSegmentIndex;
+        lineEndGraphemeIndex = 0;
+        clearPendingBreak();
+        let i = chunk.startSegmentIndex;
+        while (i < chunk.endSegmentIndex) {
+            const kind = kinds[i];
+            const w = kind === 'tab' ? getTabAdvance(lineW, tabStopAdvance) : widths[i];
+            if (kind === 'soft-hyphen') {
+                if (hasContent) {
+                    lineEndSegmentIndex = i + 1;
+                    lineEndGraphemeIndex = 0;
+                    pendingBreakSegmentIndex = i + 1;
+                    pendingBreakFitWidth = lineW + discretionaryHyphenWidth;
+                    pendingBreakPaintWidth = lineW + discretionaryHyphenWidth;
+                    pendingBreakKind = kind;
+                }
+                i++;
+                continue;
+            }
+            if (!hasContent) {
+                if (w > maxWidth && breakableWidths[i] !== null) {
+                    appendBreakableSegment(i);
+                }
+                else {
+                    startLineAtSegment(i, w);
+                }
+                updatePendingBreakForWholeSegment(i, w);
+                i++;
+                continue;
+            }
+            const newW = lineW + w;
+            if (newW > maxWidth + lineFitEpsilon) {
+                const currentBreakFitWidth = lineW + (kind === 'tab' ? 0 : lineEndFitAdvances[i]);
+                const currentBreakPaintWidth = lineW + (kind === 'tab' ? w : lineEndPaintAdvances[i]);
+                if (pendingBreakKind === 'soft-hyphen' &&
+                    engineProfile.preferEarlySoftHyphenBreak &&
+                    pendingBreakFitWidth <= maxWidth + lineFitEpsilon) {
+                    emitCurrentLine(pendingBreakSegmentIndex, 0, pendingBreakPaintWidth);
+                    continue;
+                }
+                if (pendingBreakKind === 'soft-hyphen' && continueSoftHyphenBreakableSegment(i)) {
+                    i++;
+                    continue;
+                }
+                if (canBreakAfter(kind) && currentBreakFitWidth <= maxWidth + lineFitEpsilon) {
+                    appendWholeSegment(i, w);
+                    emitCurrentLine(i + 1, 0, currentBreakPaintWidth);
+                    i++;
+                    continue;
+                }
+                if (pendingBreakSegmentIndex >= 0 && pendingBreakFitWidth <= maxWidth + lineFitEpsilon) {
+                    if (lineEndSegmentIndex > pendingBreakSegmentIndex ||
+                        (lineEndSegmentIndex === pendingBreakSegmentIndex && lineEndGraphemeIndex > 0)) {
+                        emitCurrentLine();
+                        continue;
+                    }
+                    const nextSegmentIndex = pendingBreakSegmentIndex;
+                    emitCurrentLine(nextSegmentIndex, 0, pendingBreakPaintWidth);
+                    i = nextSegmentIndex;
+                    continue;
+                }
+                if (w > maxWidth && breakableWidths[i] !== null) {
+                    emitCurrentLine();
+                    appendBreakableSegment(i);
+                    i++;
+                    continue;
+                }
+                emitCurrentLine();
+                continue;
+            }
+            appendWholeSegment(i, w);
+            updatePendingBreakForWholeSegment(i, w);
+            i++;
+        }
+        if (hasContent) {
+            const finalPaintWidth = pendingBreakSegmentIndex === chunk.consumedEndSegmentIndex
+                ? pendingBreakPaintWidth
+                : lineW;
+            emitCurrentLine(chunk.consumedEndSegmentIndex, 0, finalPaintWidth);
+        }
+    }
+    return lineCount;
+}
+function layoutNextLineRange(prepared, start, maxWidth) {
+    const normalized = normalizeLineStartWithChunk(prepared, start);
+    if (normalized === null)
+        return null;
+    if (prepared.simpleLineWalkFastPath) {
+        return layoutNextLineRangeSimple(prepared, normalized.cursor, maxWidth);
+    }
+    const chunk = prepared.chunks[normalized.chunkIndex];
+    if (chunk.startSegmentIndex === chunk.endSegmentIndex) {
+        return {
+            startSegmentIndex: chunk.startSegmentIndex,
+            startGraphemeIndex: 0,
+            endSegmentIndex: chunk.consumedEndSegmentIndex,
+            endGraphemeIndex: 0,
+            width: 0,
+        };
+    }
+    const { widths, lineEndFitAdvances, lineEndPaintAdvances, kinds, breakableWidths, breakablePrefixWidths, discretionaryHyphenWidth, tabStopAdvance, } = prepared;
+    const engineProfile = getEngineProfile();
+    const lineFitEpsilon = engineProfile.lineFitEpsilon;
+    let lineW = 0;
+    let hasContent = false;
+    const lineStartSegmentIndex = normalized.cursor.segmentIndex;
+    const lineStartGraphemeIndex = normalized.cursor.graphemeIndex;
+    let lineEndSegmentIndex = lineStartSegmentIndex;
+    let lineEndGraphemeIndex = lineStartGraphemeIndex;
+    let pendingBreakSegmentIndex = -1;
+    let pendingBreakFitWidth = 0;
+    let pendingBreakPaintWidth = 0;
+    let pendingBreakKind = null;
+    function clearPendingBreak() {
+        pendingBreakSegmentIndex = -1;
+        pendingBreakFitWidth = 0;
+        pendingBreakPaintWidth = 0;
+        pendingBreakKind = null;
+    }
+    function finishLine(endSegmentIndex = lineEndSegmentIndex, endGraphemeIndex = lineEndGraphemeIndex, width = lineW) {
+        if (!hasContent)
+            return null;
+        return {
+            startSegmentIndex: lineStartSegmentIndex,
+            startGraphemeIndex: lineStartGraphemeIndex,
+            endSegmentIndex,
+            endGraphemeIndex,
+            width,
+        };
+    }
+    function startLineAtSegment(segmentIndex, width) {
+        hasContent = true;
+        lineEndSegmentIndex = segmentIndex + 1;
+        lineEndGraphemeIndex = 0;
+        lineW = width;
+    }
+    function startLineAtGrapheme(segmentIndex, graphemeIndex, width) {
+        hasContent = true;
+        lineEndSegmentIndex = segmentIndex;
+        lineEndGraphemeIndex = graphemeIndex + 1;
+        lineW = width;
+    }
+    function appendWholeSegment(segmentIndex, width) {
+        if (!hasContent) {
+            startLineAtSegment(segmentIndex, width);
+            return;
+        }
+        lineW += width;
+        lineEndSegmentIndex = segmentIndex + 1;
+        lineEndGraphemeIndex = 0;
+    }
+    function updatePendingBreakForWholeSegment(segmentIndex, segmentWidth) {
+        if (!canBreakAfter(kinds[segmentIndex]))
+            return;
+        const fitAdvance = kinds[segmentIndex] === 'tab' ? 0 : lineEndFitAdvances[segmentIndex];
+        const paintAdvance = kinds[segmentIndex] === 'tab' ? segmentWidth : lineEndPaintAdvances[segmentIndex];
+        pendingBreakSegmentIndex = segmentIndex + 1;
+        pendingBreakFitWidth = lineW - segmentWidth + fitAdvance;
+        pendingBreakPaintWidth = lineW - segmentWidth + paintAdvance;
+        pendingBreakKind = kinds[segmentIndex];
+    }
+    function appendBreakableSegmentFrom(segmentIndex, startGraphemeIndex) {
+        const gWidths = breakableWidths[segmentIndex];
+        const gPrefixWidths = breakablePrefixWidths[segmentIndex] ?? null;
+        for (let g = startGraphemeIndex; g < gWidths.length; g++) {
+            const gw = getBreakableAdvance(gWidths, gPrefixWidths, g, engineProfile.preferPrefixWidthsForBreakableRuns);
+            if (!hasContent) {
+                startLineAtGrapheme(segmentIndex, g, gw);
+                continue;
+            }
+            if (lineW + gw > maxWidth + lineFitEpsilon) {
+                return finishLine();
+            }
+            lineW += gw;
+            lineEndSegmentIndex = segmentIndex;
+            lineEndGraphemeIndex = g + 1;
+        }
+        if (hasContent && lineEndSegmentIndex === segmentIndex && lineEndGraphemeIndex === gWidths.length) {
+            lineEndSegmentIndex = segmentIndex + 1;
+            lineEndGraphemeIndex = 0;
+        }
+        return null;
+    }
+    function maybeFinishAtSoftHyphen(segmentIndex) {
+        if (pendingBreakKind !== 'soft-hyphen' || pendingBreakSegmentIndex < 0)
+            return null;
+        const gWidths = breakableWidths[segmentIndex] ?? null;
+        if (gWidths !== null) {
+            const fitWidths = engineProfile.preferPrefixWidthsForBreakableRuns
+                ? breakablePrefixWidths[segmentIndex] ?? gWidths
+                : gWidths;
+            const usesPrefixWidths = fitWidths !== gWidths;
+            const { fitCount, fittedWidth } = fitSoftHyphenBreak(fitWidths, lineW, maxWidth, lineFitEpsilon, discretionaryHyphenWidth, usesPrefixWidths);
+            if (fitCount === gWidths.length) {
+                lineW = fittedWidth;
+                lineEndSegmentIndex = segmentIndex + 1;
+                lineEndGraphemeIndex = 0;
+                clearPendingBreak();
+                return null;
+            }
+            if (fitCount > 0) {
+                return finishLine(segmentIndex, fitCount, fittedWidth + discretionaryHyphenWidth);
+            }
+        }
+        if (pendingBreakFitWidth <= maxWidth + lineFitEpsilon) {
+            return finishLine(pendingBreakSegmentIndex, 0, pendingBreakPaintWidth);
+        }
+        return null;
+    }
+    for (let i = normalized.cursor.segmentIndex; i < chunk.endSegmentIndex; i++) {
+        const kind = kinds[i];
+        const startGraphemeIndex = i === normalized.cursor.segmentIndex ? normalized.cursor.graphemeIndex : 0;
+        const w = kind === 'tab' ? getTabAdvance(lineW, tabStopAdvance) : widths[i];
+        if (kind === 'soft-hyphen' && startGraphemeIndex === 0) {
+            if (hasContent) {
+                lineEndSegmentIndex = i + 1;
+                lineEndGraphemeIndex = 0;
+                pendingBreakSegmentIndex = i + 1;
+                pendingBreakFitWidth = lineW + discretionaryHyphenWidth;
+                pendingBreakPaintWidth = lineW + discretionaryHyphenWidth;
+                pendingBreakKind = kind;
+            }
+            continue;
+        }
+        if (!hasContent) {
+            if (startGraphemeIndex > 0) {
+                const line = appendBreakableSegmentFrom(i, startGraphemeIndex);
+                if (line !== null)
+                    return line;
+            }
+            else if (w > maxWidth && breakableWidths[i] !== null) {
+                const line = appendBreakableSegmentFrom(i, 0);
+                if (line !== null)
+                    return line;
+            }
+            else {
+                startLineAtSegment(i, w);
+            }
+            updatePendingBreakForWholeSegment(i, w);
+            continue;
+        }
+        const newW = lineW + w;
+        if (newW > maxWidth + lineFitEpsilon) {
+            const currentBreakFitWidth = lineW + (kind === 'tab' ? 0 : lineEndFitAdvances[i]);
+            const currentBreakPaintWidth = lineW + (kind === 'tab' ? w : lineEndPaintAdvances[i]);
+            if (pendingBreakKind === 'soft-hyphen' &&
+                engineProfile.preferEarlySoftHyphenBreak &&
+                pendingBreakFitWidth <= maxWidth + lineFitEpsilon) {
+                return finishLine(pendingBreakSegmentIndex, 0, pendingBreakPaintWidth);
+            }
+            const softBreakLine = maybeFinishAtSoftHyphen(i);
+            if (softBreakLine !== null)
+                return softBreakLine;
+            if (canBreakAfter(kind) && currentBreakFitWidth <= maxWidth + lineFitEpsilon) {
+                appendWholeSegment(i, w);
+                return finishLine(i + 1, 0, currentBreakPaintWidth);
+            }
+            if (pendingBreakSegmentIndex >= 0 && pendingBreakFitWidth <= maxWidth + lineFitEpsilon) {
+                if (lineEndSegmentIndex > pendingBreakSegmentIndex ||
+                    (lineEndSegmentIndex === pendingBreakSegmentIndex && lineEndGraphemeIndex > 0)) {
+                    return finishLine();
+                }
+                return finishLine(pendingBreakSegmentIndex, 0, pendingBreakPaintWidth);
+            }
+            if (w > maxWidth && breakableWidths[i] !== null) {
+                const currentLine = finishLine();
+                if (currentLine !== null)
+                    return currentLine;
+                const line = appendBreakableSegmentFrom(i, 0);
+                if (line !== null)
+                    return line;
+            }
+            return finishLine();
+        }
+        appendWholeSegment(i, w);
+        updatePendingBreakForWholeSegment(i, w);
+    }
+    if (pendingBreakSegmentIndex === chunk.consumedEndSegmentIndex && lineEndGraphemeIndex === 0) {
+        return finishLine(chunk.consumedEndSegmentIndex, 0, pendingBreakPaintWidth);
+    }
+    return finishLine(chunk.consumedEndSegmentIndex, 0, lineW);
+}
+function layoutNextLineRangeSimple(prepared, normalizedStart, maxWidth) {
+    const { widths, kinds, breakableWidths, breakablePrefixWidths } = prepared;
+    const engineProfile = getEngineProfile();
+    const lineFitEpsilon = engineProfile.lineFitEpsilon;
+    let lineW = 0;
+    let hasContent = false;
+    const lineStartSegmentIndex = normalizedStart.segmentIndex;
+    const lineStartGraphemeIndex = normalizedStart.graphemeIndex;
+    let lineEndSegmentIndex = lineStartSegmentIndex;
+    let lineEndGraphemeIndex = lineStartGraphemeIndex;
+    let pendingBreakSegmentIndex = -1;
+    let pendingBreakPaintWidth = 0;
+    function finishLine(endSegmentIndex = lineEndSegmentIndex, endGraphemeIndex = lineEndGraphemeIndex, width = lineW) {
+        if (!hasContent)
+            return null;
+        return {
+            startSegmentIndex: lineStartSegmentIndex,
+            startGraphemeIndex: lineStartGraphemeIndex,
+            endSegmentIndex,
+            endGraphemeIndex,
+            width,
+        };
+    }
+    function startLineAtSegment(segmentIndex, width) {
+        hasContent = true;
+        lineEndSegmentIndex = segmentIndex + 1;
+        lineEndGraphemeIndex = 0;
+        lineW = width;
+    }
+    function startLineAtGrapheme(segmentIndex, graphemeIndex, width) {
+        hasContent = true;
+        lineEndSegmentIndex = segmentIndex;
+        lineEndGraphemeIndex = graphemeIndex + 1;
+        lineW = width;
+    }
+    function appendWholeSegment(segmentIndex, width) {
+        if (!hasContent) {
+            startLineAtSegment(segmentIndex, width);
+            return;
+        }
+        lineW += width;
+        lineEndSegmentIndex = segmentIndex + 1;
+        lineEndGraphemeIndex = 0;
+    }
+    function updatePendingBreak(segmentIndex, segmentWidth) {
+        if (!canBreakAfter(kinds[segmentIndex]))
+            return;
+        pendingBreakSegmentIndex = segmentIndex + 1;
+        pendingBreakPaintWidth = lineW - segmentWidth;
+    }
+    function appendBreakableSegmentFrom(segmentIndex, startGraphemeIndex) {
+        const gWidths = breakableWidths[segmentIndex];
+        const gPrefixWidths = breakablePrefixWidths[segmentIndex] ?? null;
+        for (let g = startGraphemeIndex; g < gWidths.length; g++) {
+            const gw = getBreakableAdvance(gWidths, gPrefixWidths, g, engineProfile.preferPrefixWidthsForBreakableRuns);
+            if (!hasContent) {
+                startLineAtGrapheme(segmentIndex, g, gw);
+                continue;
+            }
+            if (lineW + gw > maxWidth + lineFitEpsilon) {
+                return finishLine();
+            }
+            lineW += gw;
+            lineEndSegmentIndex = segmentIndex;
+            lineEndGraphemeIndex = g + 1;
+        }
+        if (hasContent && lineEndSegmentIndex === segmentIndex && lineEndGraphemeIndex === gWidths.length) {
+            lineEndSegmentIndex = segmentIndex + 1;
+            lineEndGraphemeIndex = 0;
+        }
+        return null;
+    }
+    for (let i = normalizedStart.segmentIndex; i < widths.length; i++) {
+        const w = widths[i];
+        const kind = kinds[i];
+        const startGraphemeIndex = i === normalizedStart.segmentIndex ? normalizedStart.graphemeIndex : 0;
+        if (!hasContent) {
+            if (startGraphemeIndex > 0) {
+                const line = appendBreakableSegmentFrom(i, startGraphemeIndex);
+                if (line !== null)
+                    return line;
+            }
+            else if (w > maxWidth && breakableWidths[i] !== null) {
+                const line = appendBreakableSegmentFrom(i, 0);
+                if (line !== null)
+                    return line;
+            }
+            else {
+                startLineAtSegment(i, w);
+            }
+            updatePendingBreak(i, w);
+            continue;
+        }
+        const newW = lineW + w;
+        if (newW > maxWidth + lineFitEpsilon) {
+            if (canBreakAfter(kind)) {
+                appendWholeSegment(i, w);
+                return finishLine(i + 1, 0, lineW - w);
+            }
+            if (pendingBreakSegmentIndex >= 0) {
+                if (lineEndSegmentIndex > pendingBreakSegmentIndex ||
+                    (lineEndSegmentIndex === pendingBreakSegmentIndex && lineEndGraphemeIndex > 0)) {
+                    return finishLine();
+                }
+                return finishLine(pendingBreakSegmentIndex, 0, pendingBreakPaintWidth);
+            }
+            if (w > maxWidth && breakableWidths[i] !== null) {
+                const currentLine = finishLine();
+                if (currentLine !== null)
+                    return currentLine;
+                const line = appendBreakableSegmentFrom(i, 0);
+                if (line !== null)
+                    return line;
+            }
+            return finishLine();
+        }
+        appendWholeSegment(i, w);
+        updatePendingBreak(i, w);
+    }
+    return finishLine();
+}
+
+// --- layout.js ---
+// Text measurement for browser environments using canvas measureText.
+//
+// Problem: DOM-based text measurement (getBoundingClientRect, offsetHeight)
+// forces synchronous layout reflow. When components independently measure text,
+// each measurement triggers a reflow of the entire document. This creates
+// read/write interleaving that can cost 30ms+ per frame for 500 text blocks.
+//
+// Solution: two-phase measurement centered around canvas measureText.
+//   prepare(text, font) — segments text via Intl.Segmenter, measures each word
+//     via canvas, caches widths, and does one cached DOM calibration read per
+//     font when emoji correction is needed. Call once when text first appears.
+//   layout(prepared, maxWidth, lineHeight) — walks cached word widths with pure
+//     arithmetic to count lines and compute height. Call on every resize.
+//     ~0.0002ms per text.
+//
+// i18n: Intl.Segmenter handles CJK (per-character breaking), Thai, Arabic, etc.
+//   Bidi: simplified rich-path metadata for mixed LTR/RTL custom rendering.
+//   Punctuation merging: "better." measured as one unit (matches CSS behavior).
+//   Trailing whitespace: hangs past line edge without triggering breaks (CSS behavior).
+//   overflow-wrap: pre-measured grapheme widths enable character-level word breaking.
+//
+// Emoji correction: Chrome/Firefox canvas measures emoji wider than DOM at font
+//   sizes <24px on macOS (Apple Color Emoji). The inflation is constant per emoji
+//   grapheme at a given size, font-independent. Auto-detected by comparing canvas
+//   vs actual DOM emoji width (one cached DOM read per font). Safari canvas and
+//   DOM agree (both wider than fontSize), so correction = 0 there.
+//
+// Limitations:
+//   - system-ui font: canvas resolves to different optical variants than DOM on macOS.
+//     Use named fonts (Helvetica, Inter, etc.) for guaranteed accuracy.
+//     See RESEARCH.md "Discovery: system-ui font resolution mismatch".
+//
+// Based on Sebastian Markbage's text-layout research (github.com/chenglou/text-layout).
+
+
+
+
+sharedGraphemeSegmenter = null;
+// Rich-path only. Reuses grapheme splits while materializing multiple lines
+// from the same prepared handle, without pushing that cache into the API.
+let sharedLineTextCaches = new WeakMap();
+function getSharedGraphemeSegmenter() {
+    if (sharedGraphemeSegmenter === null) {
+        sharedGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+    }
+    return sharedGraphemeSegmenter;
+}
+// --- Public API ---
+function createEmptyPrepared(includeSegments) {
+    if (includeSegments) {
+        return {
+            widths: [],
+            lineEndFitAdvances: [],
+            lineEndPaintAdvances: [],
+            kinds: [],
+            simpleLineWalkFastPath: true,
+            segLevels: null,
+            breakableWidths: [],
+            breakablePrefixWidths: [],
+            discretionaryHyphenWidth: 0,
+            tabStopAdvance: 0,
+            chunks: [],
+            segments: [],
+        };
+    }
+    return {
+        widths: [],
+        lineEndFitAdvances: [],
+        lineEndPaintAdvances: [],
+        kinds: [],
+        simpleLineWalkFastPath: true,
+        segLevels: null,
+        breakableWidths: [],
+        breakablePrefixWidths: [],
+        discretionaryHyphenWidth: 0,
+        tabStopAdvance: 0,
+        chunks: [],
+    };
+}
+function measureAnalysis(analysis, font, includeSegments) {
+    const graphemeSegmenter = getSharedGraphemeSegmenter();
+    const engineProfile = getEngineProfile();
+    const { cache, emojiCorrection } = getFontMeasurementState(font, textMayContainEmoji(analysis.normalized));
+    const discretionaryHyphenWidth = getCorrectedSegmentWidth('-', getSegmentMetrics('-', cache), emojiCorrection);
+    const spaceWidth = getCorrectedSegmentWidth(' ', getSegmentMetrics(' ', cache), emojiCorrection);
+    const tabStopAdvance = spaceWidth * 8;
+    if (analysis.len === 0)
+        return createEmptyPrepared(includeSegments);
+    const widths = [];
+    const lineEndFitAdvances = [];
+    const lineEndPaintAdvances = [];
+    const kinds = [];
+    let simpleLineWalkFastPath = analysis.chunks.length <= 1;
+    const segStarts = includeSegments ? [] : null;
+    const breakableWidths = [];
+    const breakablePrefixWidths = [];
+    const segments = includeSegments ? [] : null;
+    const preparedStartByAnalysisIndex = Array.from({ length: analysis.len });
+    const preparedEndByAnalysisIndex = Array.from({ length: analysis.len });
+    function pushMeasuredSegment(text, width, lineEndFitAdvance, lineEndPaintAdvance, kind, start, breakable, breakablePrefix) {
+        if (kind !== 'text' && kind !== 'space' && kind !== 'zero-width-break') {
+            simpleLineWalkFastPath = false;
+        }
+        widths.push(width);
+        lineEndFitAdvances.push(lineEndFitAdvance);
+        lineEndPaintAdvances.push(lineEndPaintAdvance);
+        kinds.push(kind);
+        segStarts?.push(start);
+        breakableWidths.push(breakable);
+        breakablePrefixWidths.push(breakablePrefix);
+        if (segments !== null)
+            segments.push(text);
+    }
+    for (let mi = 0; mi < analysis.len; mi++) {
+        preparedStartByAnalysisIndex[mi] = widths.length;
+        const segText = analysis.texts[mi];
+        const segWordLike = analysis.isWordLike[mi];
+        const segKind = analysis.kinds[mi];
+        const segStart = analysis.starts[mi];
+        if (segKind === 'soft-hyphen') {
+            pushMeasuredSegment(segText, 0, discretionaryHyphenWidth, discretionaryHyphenWidth, segKind, segStart, null, null);
+            preparedEndByAnalysisIndex[mi] = widths.length;
+            continue;
+        }
+        if (segKind === 'hard-break') {
+            pushMeasuredSegment(segText, 0, 0, 0, segKind, segStart, null, null);
+            preparedEndByAnalysisIndex[mi] = widths.length;
+            continue;
+        }
+        if (segKind === 'tab') {
+            pushMeasuredSegment(segText, 0, 0, 0, segKind, segStart, null, null);
+            preparedEndByAnalysisIndex[mi] = widths.length;
+            continue;
+        }
+        const segMetrics = getSegmentMetrics(segText, cache);
+        if (segKind === 'text' && segMetrics.containsCJK) {
+            let unitText = '';
+            let unitStart = 0;
+            for (const gs of graphemeSegmenter.segment(segText)) {
+                const grapheme = gs.segment;
+                if (unitText.length === 0) {
+                    unitText = grapheme;
+                    unitStart = gs.index;
+                    continue;
+                }
+                if (kinsokuEnd.has(unitText) ||
+                    kinsokuStart.has(grapheme) ||
+                    leftStickyPunctuation.has(grapheme) ||
+                    (engineProfile.carryCJKAfterClosingQuote &&
+                        isCJK(grapheme) &&
+                        endsWithClosingQuote(unitText))) {
+                    unitText += grapheme;
+                    continue;
+                }
+                const unitMetrics = getSegmentMetrics(unitText, cache);
+                const w = getCorrectedSegmentWidth(unitText, unitMetrics, emojiCorrection);
+                pushMeasuredSegment(unitText, w, w, w, 'text', segStart + unitStart, null, null);
+                unitText = grapheme;
+                unitStart = gs.index;
+            }
+            if (unitText.length > 0) {
+                const unitMetrics = getSegmentMetrics(unitText, cache);
+                const w = getCorrectedSegmentWidth(unitText, unitMetrics, emojiCorrection);
+                pushMeasuredSegment(unitText, w, w, w, 'text', segStart + unitStart, null, null);
+            }
+            preparedEndByAnalysisIndex[mi] = widths.length;
+            continue;
+        }
+        const w = getCorrectedSegmentWidth(segText, segMetrics, emojiCorrection);
+        const lineEndFitAdvance = segKind === 'space' || segKind === 'preserved-space' || segKind === 'zero-width-break'
+            ? 0
+            : w;
+        const lineEndPaintAdvance = segKind === 'space' || segKind === 'zero-width-break'
+            ? 0
+            : w;
+        if (segWordLike && segText.length > 1) {
+            const graphemeWidths = getSegmentGraphemeWidths(segText, segMetrics, cache, emojiCorrection);
+            const graphemePrefixWidths = engineProfile.preferPrefixWidthsForBreakableRuns
+                ? getSegmentGraphemePrefixWidths(segText, segMetrics, cache, emojiCorrection)
+                : null;
+            pushMeasuredSegment(segText, w, lineEndFitAdvance, lineEndPaintAdvance, segKind, segStart, graphemeWidths, graphemePrefixWidths);
+        }
+        else {
+            pushMeasuredSegment(segText, w, lineEndFitAdvance, lineEndPaintAdvance, segKind, segStart, null, null);
+        }
+        preparedEndByAnalysisIndex[mi] = widths.length;
+    }
+    const chunks = mapAnalysisChunksToPreparedChunks(analysis.chunks, preparedStartByAnalysisIndex, preparedEndByAnalysisIndex);
+    const segLevels = segStarts === null ? null : computeSegmentLevels(analysis.normalized, segStarts);
+    if (segments !== null) {
+        return {
+            widths,
+            lineEndFitAdvances,
+            lineEndPaintAdvances,
+            kinds,
+            simpleLineWalkFastPath,
+            segLevels,
+            breakableWidths,
+            breakablePrefixWidths,
+            discretionaryHyphenWidth,
+            tabStopAdvance,
+            chunks,
+            segments,
+        };
+    }
+    return {
+        widths,
+        lineEndFitAdvances,
+        lineEndPaintAdvances,
+        kinds,
+        simpleLineWalkFastPath,
+        segLevels,
+        breakableWidths,
+        breakablePrefixWidths,
+        discretionaryHyphenWidth,
+        tabStopAdvance,
+        chunks,
+    };
+}
+function mapAnalysisChunksToPreparedChunks(chunks, preparedStartByAnalysisIndex, preparedEndByAnalysisIndex) {
+    const preparedChunks = [];
+    for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const startSegmentIndex = chunk.startSegmentIndex < preparedStartByAnalysisIndex.length
+            ? preparedStartByAnalysisIndex[chunk.startSegmentIndex]
+            : preparedEndByAnalysisIndex[preparedEndByAnalysisIndex.length - 1] ?? 0;
+        const endSegmentIndex = chunk.endSegmentIndex < preparedStartByAnalysisIndex.length
+            ? preparedStartByAnalysisIndex[chunk.endSegmentIndex]
+            : preparedEndByAnalysisIndex[preparedEndByAnalysisIndex.length - 1] ?? 0;
+        const consumedEndSegmentIndex = chunk.consumedEndSegmentIndex < preparedStartByAnalysisIndex.length
+            ? preparedStartByAnalysisIndex[chunk.consumedEndSegmentIndex]
+            : preparedEndByAnalysisIndex[preparedEndByAnalysisIndex.length - 1] ?? 0;
+        preparedChunks.push({
+            startSegmentIndex,
+            endSegmentIndex,
+            consumedEndSegmentIndex,
+        });
+    }
+    return preparedChunks;
+}
+function prepareInternal(text, font, includeSegments, options) {
+    const analysis = analyzeText(text, getEngineProfile(), options?.whiteSpace);
+    return measureAnalysis(analysis, font, includeSegments);
+}
+// Diagnostic-only helper used by the browser benchmark harness to separate the
+// text-analysis and measurement phases without duplicating the prepare logic.
+function profilePrepare(text, font, options) {
+    const t0 = performance.now();
+    const analysis = analyzeText(text, getEngineProfile(), options?.whiteSpace);
+    const t1 = performance.now();
+    const prepared = measureAnalysis(analysis, font, false);
+    const t2 = performance.now();
+    let breakableSegments = 0;
+    for (const widths of prepared.breakableWidths) {
+        if (widths !== null)
+            breakableSegments++;
+    }
+    return {
+        analysisMs: t1 - t0,
+        measureMs: t2 - t1,
+        totalMs: t2 - t0,
+        analysisSegments: analysis.len,
+        preparedSegments: prepared.widths.length,
+        breakableSegments,
+    };
+}
+// Prepare text for layout. Segments the text, measures each segment via canvas,
+// and stores the widths for fast relayout at any width. Call once per text block
+// (e.g. when a comment first appears). The result is width-independent — the
+// same PreparedText can be laid out at any maxWidth and lineHeight via layout().
+//
+// Steps:
+//   1. Normalize collapsible whitespace (CSS white-space: normal behavior)
+//   2. Segment via Intl.Segmenter (handles CJK, Thai, etc.)
+//   3. Merge punctuation into preceding word ("better." as one unit)
+//   4. Split CJK words into individual graphemes (per-character line breaks)
+//   5. Measure each segment via canvas measureText, cache by (segment, font)
+//   6. Pre-measure graphemes of long words (for overflow-wrap: break-word)
+//   7. Correct emoji canvas inflation (auto-detected per font size)
+//   8. Optionally compute rich-path bidi metadata for custom renderers
+function prepare(text, font, options) {
+    return prepareInternal(text, font, false, options);
+}
+// Rich variant used by callers that need enough information to render the
+// laid-out lines themselves.
+function prepareWithSegments(text, font, options) {
+    return prepareInternal(text, font, true, options);
+}
+function getInternalPrepared(prepared) {
+    return prepared;
+}
+// Layout prepared text at a given max width and caller-provided lineHeight.
+// Pure arithmetic on cached widths — no canvas calls, no DOM reads, no string
+// operations, no allocations.
+// ~0.0002ms per text block. Call on every resize.
+//
+// Line breaking rules (matching CSS white-space: normal + overflow-wrap: break-word):
+//   - Break before any non-space segment that would overflow the line
+//   - Trailing whitespace hangs past the line edge (doesn't trigger breaks)
+//   - Segments wider than maxWidth are broken at grapheme boundaries
+function layout(prepared, maxWidth, lineHeight) {
+    // Keep the resize hot path specialized. `layoutWithLines()` shares the same
+    // break semantics but also tracks line ranges; the extra bookkeeping is too
+    // expensive to pay on every hot-path `layout()` call.
+    const lineCount = countPreparedLines(getInternalPrepared(prepared), maxWidth);
+    return { lineCount, height: lineCount * lineHeight };
+}
+function getSegmentGraphemes(segmentIndex, segments, cache) {
+    let graphemes = cache.get(segmentIndex);
+    if (graphemes !== undefined)
+        return graphemes;
+    graphemes = [];
+    const graphemeSegmenter = getSharedGraphemeSegmenter();
+    for (const gs of graphemeSegmenter.segment(segments[segmentIndex])) {
+        graphemes.push(gs.segment);
+    }
+    cache.set(segmentIndex, graphemes);
+    return graphemes;
+}
+function getLineTextCache(prepared) {
+    let cache = sharedLineTextCaches.get(prepared);
+    if (cache !== undefined)
+        return cache;
+    cache = new Map();
+    sharedLineTextCaches.set(prepared, cache);
+    return cache;
+}
+function lineHasDiscretionaryHyphen(kinds, startSegmentIndex, startGraphemeIndex, endSegmentIndex) {
+    return (endSegmentIndex > 0 &&
+        kinds[endSegmentIndex - 1] === 'soft-hyphen' &&
+        !(startSegmentIndex === endSegmentIndex && startGraphemeIndex > 0));
+}
+function buildLineTextFromRange(segments, kinds, cache, startSegmentIndex, startGraphemeIndex, endSegmentIndex, endGraphemeIndex) {
+    let text = '';
+    const endsWithDiscretionaryHyphen = lineHasDiscretionaryHyphen(kinds, startSegmentIndex, startGraphemeIndex, endSegmentIndex);
+    for (let i = startSegmentIndex; i < endSegmentIndex; i++) {
+        if (kinds[i] === 'soft-hyphen' || kinds[i] === 'hard-break')
+            continue;
+        if (i === startSegmentIndex && startGraphemeIndex > 0) {
+            text += getSegmentGraphemes(i, segments, cache).slice(startGraphemeIndex).join('');
+        }
+        else {
+            text += segments[i];
+        }
+    }
+    if (endGraphemeIndex > 0) {
+        if (endsWithDiscretionaryHyphen)
+            text += '-';
+        text += getSegmentGraphemes(endSegmentIndex, segments, cache).slice(startSegmentIndex === endSegmentIndex ? startGraphemeIndex : 0, endGraphemeIndex).join('');
+    }
+    else if (endsWithDiscretionaryHyphen) {
+        text += '-';
+    }
+    return text;
+}
+function createLayoutLine(prepared, cache, width, startSegmentIndex, startGraphemeIndex, endSegmentIndex, endGraphemeIndex) {
+    return {
+        text: buildLineTextFromRange(prepared.segments, prepared.kinds, cache, startSegmentIndex, startGraphemeIndex, endSegmentIndex, endGraphemeIndex),
+        width,
+        start: {
+            segmentIndex: startSegmentIndex,
+            graphemeIndex: startGraphemeIndex,
+        },
+        end: {
+            segmentIndex: endSegmentIndex,
+            graphemeIndex: endGraphemeIndex,
+        },
+    };
+}
+function materializeLayoutLine(prepared, cache, line) {
+    return createLayoutLine(prepared, cache, line.width, line.startSegmentIndex, line.startGraphemeIndex, line.endSegmentIndex, line.endGraphemeIndex);
+}
+function toLayoutLineRange(line) {
+    return {
+        width: line.width,
+        start: {
+            segmentIndex: line.startSegmentIndex,
+            graphemeIndex: line.startGraphemeIndex,
+        },
+        end: {
+            segmentIndex: line.endSegmentIndex,
+            graphemeIndex: line.endGraphemeIndex,
+        },
+    };
+}
+function stepLineRange(prepared, start, maxWidth) {
+    const line = stepPreparedLineRange(prepared, start, maxWidth);
+    if (line === null)
+        return null;
+    return toLayoutLineRange(line);
+}
+function materializeLine(prepared, line) {
+    return createLayoutLine(prepared, getLineTextCache(prepared), line.width, line.start.segmentIndex, line.start.graphemeIndex, line.end.segmentIndex, line.end.graphemeIndex);
+}
+// Batch low-level line geometry pass. This is the non-materializing counterpart
+// to layoutWithLines(), useful for shrinkwrap and other aggregate geometry work.
+function walkLineRanges(prepared, maxWidth, onLine) {
+    if (prepared.widths.length === 0)
+        return 0;
+    return walkPreparedLines(getInternalPrepared(prepared), maxWidth, line => {
+        onLine(toLayoutLineRange(line));
+    });
+}
+function layoutNextLine(prepared, start, maxWidth) {
+    const line = stepLineRange(prepared, start, maxWidth);
+    if (line === null)
+        return null;
+    return materializeLine(prepared, line);
+}
+// Rich layout API for callers that want the actual line contents and widths.
+// Caller still supplies lineHeight at layout time. Mirrors layout()'s break
+// decisions, but keeps extra per-line bookkeeping so it should stay off the
+// resize hot path.
+function layoutWithLines(prepared, maxWidth, lineHeight) {
+    const lines = [];
+    if (prepared.widths.length === 0)
+        return { lineCount: 0, height: 0, lines };
+    const graphemeCache = getLineTextCache(prepared);
+    const lineCount = walkPreparedLines(getInternalPrepared(prepared), maxWidth, line => {
+        lines.push(materializeLayoutLine(prepared, graphemeCache, line));
+    });
+    return { lineCount, height: lineCount * lineHeight, lines };
+}
+function clearCache() {
+    clearAnalysisCaches();
+    sharedGraphemeSegmenter = null;
+    sharedLineTextCaches = new WeakMap();
+    clearMeasurementCaches();
+}
+function setLocale(locale) {
+    setAnalysisLocale(locale);
+    clearCache();
+}
+
+
+global.Pretext = {
+  prepare: prepare,
+  prepareWithSegments: prepareWithSegments,
+  layout: layout,
+  layoutWithLines: layoutWithLines,
+  layoutNextLine: layoutNextLine,
+  walkLineRanges: walkLineRanges,
+  clearCache: clearCache,
+  setLocale: setLocale
+};
+})(window);
+
+</script>
+<script>
+// ============================================================================
+// SpatialFlow v2 — Production Slide Deck Engine
+// ============================================================================
+// Measurement-driven reactive constraint solver with:
+// - Pretext integration for sub-ms text measurement
+// - Intrinsic sizing (hug / fill / fixed)
+// - Flex grow/shrink with min/max bounds
+// - Priority-based constraint resolution
+// - Auto-layout frames (generalized stack containers)
+// - Groups with transform composition
+// - Connectors with reactive endpoint tracking
+// - Mode C command protocol with violation feedback
+// ============================================================================
+
+// --- Reactive primitives ---------------------------------------------------
+class Signal {
+  constructor(v) { this.value = v; this.subs = new Set(); }
+  get() { return this.value; }
+  set(v) { if (v === this.value) return; this.value = v; for (const s of this.subs) s(v); }
+  subscribe(fn) { this.subs.add(fn); return () => this.subs.delete(fn); }
+}
+
+// --- Easing ----------------------------------------------------------------
+const Easing = {
+  linear: t => t,
+  ease_out: t => 1 - Math.pow(1 - t, 2),
+  ease_in: t => t * t,
+  ease_in_out: t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
+  ease_out_cubic: t => 1 - Math.pow(1 - t, 3),
+  ease_in_cubic: t => t * t * t,
+  ease_out_bounce: t => {
+    const n = 7.5625, d = 2.75;
+    if (t < 1/d) return n*t*t;
+    if (t < 2/d) return n*(t -= 1.5/d)*t + .75;
+    if (t < 2.5/d) return n*(t -= 2.25/d)*t + .9375;
+    return n*(t -= 2.625/d)*t + .984375;
+  }
+};
+
+function interpKeyframes(frames, t, ease = 'linear') {
+  if (!frames.length) return 0;
+  if (t <= frames[0].time) return frames[0].value;
+  if (t >= frames[frames.length - 1].time) return frames[frames.length - 1].value;
+  let i = 0;
+  while (i < frames.length - 1 && !(t >= frames[i].time && t <= frames[i + 1].time)) i++;
+  const a = frames[i], b = frames[i + 1];
+  const u = (t - a.time) / (b.time - a.time);
+  const e = (Easing[ease] || Easing.linear)(u);
+  return a.value + (b.value - a.value) * e;
+}
+
+// --- Priority system -------------------------------------------------------
+const Priority = {
+  REQUIRED: 1000,
+  STRONG: 750,
+  MEDIUM: 500,
+  WEAK: 250
+};
+
+// --- Expression evaluator --------------------------------------------------
+const builtinFns = {
+  max: Math.max, min: Math.min, abs: Math.abs, floor: Math.floor, ceil: Math.ceil,
+  clamp: (x, a, b) => Math.min(Math.max(x, a), b),
+  lerp: (a, b, t) => a + (b - a) * t,
+  midpoint: (a, b) => (a + b) / 2
+};
+
+function evalExpr(expr, ctx) {
+  function lookup(parts) {
+    const id = parts[0];
+    const obj = ctx.measurements[id];
+    if (!obj) throw new Error('Unknown element: ' + id);
+    let val = obj;
+    for (let i = 1; i < parts.length; i++) {
+      val = val[parts[i]];
+      if (val === undefined) throw new Error('Unknown prop: ' + parts.join('.'));
+    }
+    if (typeof val !== 'number') throw new Error('Not a number: ' + parts.join('.'));
+    return val;
+  }
+  const safe = expr.replace(/[A-Za-z_][A-Za-z0-9_.]*/g, m => {
+    if (m in builtinFns) return `__fns__.${m}`;
+    if (/^[0-9.]+$/.test(m)) return m;
+    const parts = m.split('.');
+    return `__lookup__(${JSON.stringify(parts)})`;
+  });
+  try {
+    const fn = new Function('__lookup__', '__fns__', `return (${safe});`);
+    return fn(lookup, builtinFns);
+  } catch (e) {
+    console.warn('Expression eval failed:', expr, e.message);
+    return 0;
+  }
+}
+
+function extractDeps(expr) {
+  const ids = new Set();
+  if (!expr) return [];
+  expr.replace(/([A-Za-z_][A-Za-z0-9_]*)\s*\./g, (_, g) => { ids.add(g); return _; });
+  return Array.from(ids);
+}
+
+// --- Topological sort (Kahn's algorithm) -----------------------------------
+function topoOrder(elements, constraints) {
+  const allIds = new Set(elements.map(e => e.id));
+  const constrained = new Set(constraints.map(c => c.target));
+  const graph = new Map();
+  const indeg = new Map();
+  for (const id of allIds) { graph.set(id, new Set()); indeg.set(id, 0); }
+  for (const c of constraints) {
+    const deps = new Set();
+    if (c.x) extractDeps(c.x).forEach(d => deps.add(d));
+    if (c.y) extractDeps(c.y).forEach(d => deps.add(d));
+    if (c.width) extractDeps(c.width).forEach(d => deps.add(d));
+    if (c.height) extractDeps(c.height).forEach(d => deps.add(d));
+    for (const d of deps) {
+      if (d !== c.target && allIds.has(d)) {
+        if (!graph.get(d).has(c.target)) {
+          graph.get(d).add(c.target);
+          indeg.set(c.target, (indeg.get(c.target) || 0) + 1);
+        }
+      }
+    }
+  }
+  // Kahn's
+  const q = [];
+  for (const [k, v] of indeg) if (v === 0) q.push(k);
+  const out = [];
+  while (q.length) {
+    const u = q.shift();
+    out.push(u);
+    for (const v of graph.get(u) || []) {
+      indeg.set(v, indeg.get(v) - 1);
+      if (indeg.get(v) === 0) q.push(v);
+    }
+  }
+  if (out.length !== allIds.size) {
+    // Add unconstrained elements that weren't in the cycle
+    for (const id of allIds) {
+      if (!out.includes(id)) out.push(id);
+    }
+    console.warn('Possible cycle in constraints, some elements may not resolve correctly');
+  }
+  return out;
+}
+
+// --- Pretext integration layer ---------------------------------------------
+class TextMeasurer {
+  constructor() {
+    this._canvas = document.createElement('canvas');
+    this._ctx = this._canvas.getContext('2d');
+    this._cache = new Map(); // key: text+font → prepared
+    this._usePretext = typeof window !== 'undefined' && !!window.Pretext;
+  }
+
+  // Returns { lineCount, height, width, lines, minContentWidth, maxContentWidth }
+  measure(text, font, maxWidth, lineHeight) {
+    if (this._usePretext) {
+      return this._measurePretext(text, font, maxWidth, lineHeight);
+    }
+    return this._measureCanvas(text, font, maxWidth, lineHeight);
+  }
+
+  _measurePretext(text, font, maxWidth, lineHeight) {
+    const key = text + '||' + font;
+    let prepared = this._cache.get(key);
+    if (!prepared) {
+      prepared = window.Pretext.prepareWithSegments(text, font);
+      this._cache.set(key, prepared);
+    }
+    const result = window.Pretext.layoutWithLines(prepared, maxWidth, lineHeight);
+    // Compute max-content width (natural width without wrapping)
+    const natural = window.Pretext.layout(prepared, Infinity, lineHeight);
+    // Get min-content width (longest word — approximate via narrow layout)
+    // Use a very small width to force per-word breaks
+    const narrow = window.Pretext.layout(prepared, 1, lineHeight);
+
+    // Compute actual line widths for rendering
+    const lineTexts = result.lines.map(l => l.text || '');
+    const lineWidths = lineTexts.map(lt => {
+      this._ctx.font = font;
+      return this._ctx.measureText(lt).width;
+    });
+    const actualMaxWidth = lineWidths.length ? Math.max(...lineWidths) : 0;
+
+    return {
+      lineCount: result.lineCount,
+      height: result.height,
+      width: maxWidth,
+      actualWidth: actualMaxWidth,
+      lines: lineTexts,
+      lineWidths,
+      minContentWidth: 0, // TODO: derive from segment widths
+      maxContentWidth: natural.lineCount === 1 ? actualMaxWidth : maxWidth
+    };
+  }
+
+  _measureCanvas(text, font, maxWidth, lineHeight) {
+    this._ctx.font = font;
+    const words = text.split(/\s+/);
+    const lines = [];
+    let line = '';
+    for (const w of words) {
+      const test = line ? line + ' ' + w : w;
+      if (this._ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = w;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    const lineWidths = lines.map(l => this._ctx.measureText(l).width);
+    const height = Math.max(lineHeight, lines.length * lineHeight);
+    const naturalWidth = this._ctx.measureText(text).width;
+    return {
+      lineCount: lines.length,
+      height,
+      width: maxWidth,
+      actualWidth: Math.max(...lineWidths, 0),
+      lines,
+      lineWidths,
+      minContentWidth: Math.max(...words.map(w => this._ctx.measureText(w).width), 0),
+      maxContentWidth: naturalWidth
+    };
+  }
+
+  clearCache() {
+    this._cache.clear();
+    if (this._usePretext && window.Pretext.clearCache) {
+      window.Pretext.clearCache();
+    }
+  }
+}
+
+// --- Intrinsic sizing modes ------------------------------------------------
+// sizing: 'fixed' | 'hug' | 'fill'
+// fixed: use explicit width/height
+// hug: shrink to content (text measurement drives size)
+// fill: expand to fill parent's available space (with optional grow factor)
+function resolveIntrinsicSize(el, textMeasurer, parentAvailable) {
+  const sizing = el.sizing || 'fixed';
+  const result = { width: el.width || 0, height: el.height || 0 };
+
+  if (sizing === 'fixed') return result;
+
+  if (sizing === 'hug' && (el.type === 'text_box' || el.type === 'text')) {
+    const font = el.font || '16px Inter';
+    const fontSize = parseInt(font, 10) || 16;
+    const lh = (el.lineHeight || 1.3) * fontSize;
+    const maxW = el.width || parentAvailable?.width || 300;
+    const m = textMeasurer.measure(el.content || '', font, maxW, lh);
+    result.width = m.actualWidth + (el.paddingLeft || 0) + (el.paddingRight || 0);
+    result.height = m.height + (el.paddingTop || 0) + (el.paddingBottom || 0);
+    return result;
+  }
+
+  if (sizing === 'fill') {
+    if (parentAvailable) {
+      result.width = parentAvailable.width || result.width;
+      result.height = parentAvailable.height || result.height;
+    }
+  }
+
+  return result;
+}
+
+// --- Auto Layout Frame -----------------------------------------------------
+// direction: 'horizontal' | 'vertical'
+// spacing: gap between children
+// padding: { top, right, bottom, left }
+// primaryAlign: 'start' | 'center' | 'end' | 'space-between'
+// counterAlign: 'start' | 'center' | 'end' | 'stretch'
+// children: array of element IDs
+function resolveAutoLayout(frame, childMeasurements, allElements) {
+  const dir = frame.direction || 'vertical';
+  const spacing = frame.spacing || 0;
+  const pad = normalizePadding(frame.padding);
+  const primaryAlign = frame.primaryAlign || 'start';
+  const counterAlign = frame.counterAlign || 'start';
+  const children = frame.children || [];
+
+  const innerW = (frame.width || 300) - pad.left - pad.right;
+  const innerH = (frame.height || 300) - pad.top - pad.bottom;
+
+  const isH = dir === 'horizontal';
+  const primarySize = isH ? innerW : innerH;
+  const counterSize = isH ? innerH : innerW;
+
+  // Collect child sizes and flex factors
+  const childInfos = children.map(cid => {
+    const el = allElements.find(e => e.id === cid);
+    const m = childMeasurements[cid];
+    if (!el || !m) return { id: cid, size: 0, counterSz: 0, grow: 0, shrink: 1, minSize: 0, maxSize: Infinity };
+    const sz = isH ? (m.width || 0) : (m.height || 0);
+    const csz = isH ? (m.height || 0) : (m.width || 0);
+    return {
+      id: cid,
+      size: sz,
+      counterSz: csz,
+      grow: el.flexGrow || 0,
+      shrink: el.flexShrink || 1,
+      minSize: isH ? (el.minWidth || 0) : (el.minHeight || 0),
+      maxSize: isH ? (el.maxWidth || Infinity) : (el.maxHeight || Infinity)
+    };
+  });
+
+  // Flex resolution
+  const totalFixed = childInfos.reduce((s, c) => s + c.size, 0);
+  const totalGaps = Math.max(0, children.length - 1) * spacing;
+  let remaining = primarySize - totalFixed - totalGaps;
+
+  // Grow phase
+  if (remaining > 0) {
+    const totalGrow = childInfos.reduce((s, c) => s + c.grow, 0);
+    if (totalGrow > 0) {
+      const frozen = new Set();
+      let iters = 0;
+      while (remaining > 0.5 && iters < 10) {
+        iters++;
+        const activeGrow = childInfos.filter(c => !frozen.has(c.id)).reduce((s, c) => s + c.grow, 0);
+        if (activeGrow <= 0) break;
+        let distributed = 0;
+        for (const c of childInfos) {
+          if (frozen.has(c.id) || c.grow <= 0) continue;
+          const share = (c.grow / activeGrow) * remaining;
+          const newSize = c.size + share;
+          if (newSize > c.maxSize) {
+            distributed += c.maxSize - c.size;
+            c.size = c.maxSize;
+            frozen.add(c.id);
+          } else {
+            distributed += share;
+            c.size = newSize;
+          }
+        }
+        remaining -= distributed;
+      }
+    }
+  }
+  // Shrink phase
+  else if (remaining < 0) {
+    const deficit = -remaining;
+    const totalShrinkBasis = childInfos.reduce((s, c) => s + c.shrink * c.size, 0);
+    if (totalShrinkBasis > 0) {
+      for (const c of childInfos) {
+        const share = (c.shrink * c.size / totalShrinkBasis) * deficit;
+        c.size = Math.max(c.minSize, c.size - share);
+      }
+    }
+  }
+
+  // Position children along primary axis
+  let primaryPositions;
+  const totalChildSize = childInfos.reduce((s, c) => s + c.size, 0) + totalGaps;
+
+  if (primaryAlign === 'start') {
+    let pos = 0;
+    primaryPositions = childInfos.map(c => { const p = pos; pos += c.size + spacing; return p; });
+  } else if (primaryAlign === 'center') {
+    let pos = (primarySize - totalChildSize) / 2;
+    primaryPositions = childInfos.map(c => { const p = pos; pos += c.size + spacing; return p; });
+  } else if (primaryAlign === 'end') {
+    let pos = primarySize - totalChildSize;
+    primaryPositions = childInfos.map(c => { const p = pos; pos += c.size + spacing; return p; });
+  } else if (primaryAlign === 'space-between') {
+    const gap = children.length > 1 ? (primarySize - totalChildSize + totalGaps) / (children.length - 1) : 0;
+    let pos = 0;
+    primaryPositions = childInfos.map(c => { const p = pos; pos += c.size + gap; return p; });
+  }
+
+  // Position children along counter axis
+  const results = {};
+  for (let i = 0; i < childInfos.length; i++) {
+    const c = childInfos[i];
+    const pp = primaryPositions[i];
+    let cp;
+    let counterSzFinal = c.counterSz;
+    if (counterAlign === 'start') cp = 0;
+    else if (counterAlign === 'center') cp = (counterSize - c.counterSz) / 2;
+    else if (counterAlign === 'end') cp = counterSize - c.counterSz;
+    else if (counterAlign === 'stretch') { cp = 0; counterSzFinal = counterSize; }
+    else cp = 0;
+
+    results[c.id] = {
+      x: isH ? pad.left + pp : pad.left + cp,
+      y: isH ? pad.top + cp : pad.top + pp,
+      width: isH ? c.size : counterSzFinal,
+      height: isH ? counterSzFinal : c.size
+    };
+  }
+  return results;
+}
+
+function normalizePadding(p) {
+  if (!p) return { top: 0, right: 0, bottom: 0, left: 0 };
+  if (typeof p === 'number') return { top: p, right: p, bottom: p, left: p };
+  return { top: p.top || 0, right: p.right || 0, bottom: p.bottom || 0, left: p.left || 0 };
+}
+
+// --- Measurement engine (extended) -----------------------------------------
+function measureElement(el, animState, textMeasurer, ctx2d) {
+  const a = animState[el.id] || {};
+  const x = a.x ?? el.x ?? 0;
+  const y = a.y ?? el.y ?? 0;
+  const w = a.width ?? el.width ?? 0;
+  const h = a.height ?? el.height ?? 0;
+
+  switch (el.type) {
+    case 'rectangle':
+    case 'frame': {
+      return { x, y, width: w, height: h, bounds: { left: x, right: x + w, top: y, bottom: y + h }, centerX: x + w / 2, centerY: y + h / 2 };
+    }
+    case 'circle': {
+      const r = el.radius || 0;
+      return { x, y, radius: r, bounds: { left: x - r, right: x + r, top: y - r, bottom: y + r }, centerX: x, centerY: y };
+    }
+    case 'text': {
+      const content = el.content || '';
+      const font = el.font || '16px Inter';
+      const fontSize = parseInt(font, 10) || 16;
+      if (ctx2d) { ctx2d.font = font; }
+      const tw = ctx2d ? ctx2d.measureText(content).width : content.length * fontSize * 0.6;
+      return { x, y, width: tw, height: fontSize, bounds: { left: x, right: x + tw, top: y - fontSize, bottom: y }, centerX: x + tw / 2, centerY: y - fontSize / 2 };
+    }
+    case 'text_box': {
+      const content = el.content || '';
+      const font = el.font || '16px Inter';
+      const fontSize = parseInt(font, 10) || 16;
+      const lhMult = el.lineHeight || 1.3;
+      const lh = lhMult * fontSize;
+      const maxW = a.width ?? el.width ?? 300;
+      const m = textMeasurer.measure(content, font, maxW, lh);
+      return {
+        x, y, width: maxW, height: m.height,
+        lines: m.lines, lineWidths: m.lineWidths, lineHeight: lh, font,
+        actualWidth: m.actualWidth,
+        minContentWidth: m.minContentWidth,
+        maxContentWidth: m.maxContentWidth,
+        bounds: { left: x, right: x + maxW, top: y, bottom: y + m.height },
+        centerX: x + maxW / 2, centerY: y + m.height / 2
+      };
+    }
+    case 'image': {
+      return { x, y, width: w, height: h, bounds: { left: x, right: x + w, top: y, bottom: y + h }, centerX: x + w / 2, centerY: y + h / 2 };
+    }
+    case 'line': {
+      const x2 = el.x2 || x, y2 = el.y2 || y;
+      return { x, y, x2, y2, bounds: { left: Math.min(x, x2), right: Math.max(x, x2), top: Math.min(y, y2), bottom: Math.max(y, y2) }, centerX: (x + x2) / 2, centerY: (y + y2) / 2 };
+    }
+    case 'connector': {
+      // Connectors resolve position from source/target elements during constraint phase
+      return { x, y, x2: el.x2 || x, y2: el.y2 || y, bounds: { left: x, right: x, top: y, bottom: y }, centerX: x, centerY: y };
+    }
+    case 'group': {
+      // Groups get their bounds from children — computed after children are measured
+      return { x, y, width: w, height: h, bounds: { left: x, right: x + w, top: y, bottom: y + h }, centerX: x + w / 2, centerY: y + h / 2 };
+    }
+    default: {
+      return { x, y, width: w, height: h, bounds: { left: x, right: x + w, top: y, bottom: y + h }, centerX: x + w / 2, centerY: y + h / 2 };
+    }
+  }
+}
+
+// --- Violation detection ---------------------------------------------------
+function detectViolations(measurements, spec) {
+  const violations = [];
+  const slideW = spec.metadata?.width || 960;
+  const slideH = spec.metadata?.height || 540;
+
+  for (const el of spec.elements) {
+    const m = measurements[el.id];
+    if (!m) continue;
+    const b = m.bounds;
+
+    // Overflow: element extends beyond slide bounds
+    if (b.right > slideW || b.bottom > slideH || b.left < 0 || b.top < 0) {
+      violations.push({ type: 'overflow', elementId: el.id, bounds: b, slideWidth: slideW, slideHeight: slideH });
+    }
+  }
+
+  // Overlap detection
+  const ids = spec.elements.map(e => e.id);
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const ma = measurements[ids[i]], mb = measurements[ids[j]];
+      if (!ma?.bounds || !mb?.bounds) continue;
+      const ix = Math.max(0, Math.min(ma.bounds.right, mb.bounds.right) - Math.max(ma.bounds.left, mb.bounds.left));
+      const iy = Math.max(0, Math.min(ma.bounds.bottom, mb.bounds.bottom) - Math.max(ma.bounds.top, mb.bounds.top));
+      if (ix > 0 && iy > 0) {
+        violations.push({ type: 'overlap', elements: [ids[i], ids[j]], area: ix * iy });
+      }
+    }
+  }
+
+  return violations;
+}
+
+// --- Main engine -----------------------------------------------------------
+class SpatialFlowEngine {
+  constructor(spec, canvas) {
+    this.spec = JSON.parse(JSON.stringify(spec));
+    this.canvas = canvas;
+    this.ctx = canvas ? canvas.getContext('2d') : null;
+    this.textMeasurer = new TextMeasurer();
+    this.time = new Signal(0);
+    this._imageCache = new Map();
+    this._commandLog = [];
+  }
+
+  // Core evaluation: animation → measure → topo-sort → constrain → re-measure
+  evaluate(t) {
+    const { elements, animations = [], constraints = [] } = this.spec;
+
+    // Phase 1: Resolve animations
+    const animState = {};
+    for (const a of animations) {
+      const v = interpKeyframes(a.keyframes || [], t, a.easing || 'linear');
+      const tid = a.target || a.targetId;
+      if (!animState[tid]) animState[tid] = {};
+      animState[tid][a.property] = v;
+    }
+
+    // Phase 2: Initial measurement (pre-constraint)
+    const measurements = {};
+    for (const el of elements) {
+      measurements[el.id] = measureElement(el, animState, this.textMeasurer, this.ctx);
+    }
+
+    // Phase 2.5: Resolve auto-layout frames
+    const frames = elements.filter(e => e.type === 'frame' && e.children?.length > 0);
+    for (const frame of frames) {
+      const childLayouts = resolveAutoLayout(frame, measurements, elements);
+      for (const [childId, layout] of Object.entries(childLayouts)) {
+        // Convert frame-local coords to absolute
+        const fm = measurements[frame.id];
+        if (!animState[childId]) animState[childId] = {};
+        animState[childId].x = fm.x + layout.x;
+        animState[childId].y = fm.y + layout.y;
+        if (layout.width) animState[childId].width = layout.width;
+        if (layout.height) animState[childId].height = layout.height;
+        // Re-measure with new position
+        const el = elements.find(e => e.id === childId);
+        if (el) {
+          measurements[childId] = measureElement(el, animState, this.textMeasurer, this.ctx);
+        }
+      }
+    }
+
+    // Phase 2.7: Resolve connectors
+    for (const el of elements) {
+      if (el.type === 'connector' && el.from && el.to) {
+        const fromM = measurements[el.from];
+        const toM = measurements[el.to];
+        if (fromM && toM) {
+          const fromSite = getConnectionSite(fromM, el.fromSite || 'right');
+          const toSite = getConnectionSite(toM, el.toSite || 'left');
+          measurements[el.id] = {
+            x: fromSite.x, y: fromSite.y,
+            x2: toSite.x, y2: toSite.y,
+            bounds: {
+              left: Math.min(fromSite.x, toSite.x), right: Math.max(fromSite.x, toSite.x),
+              top: Math.min(fromSite.y, toSite.y), bottom: Math.max(fromSite.y, toSite.y)
+            },
+            centerX: (fromSite.x + toSite.x) / 2,
+            centerY: (fromSite.y + toSite.y) / 2
+          };
+        }
+      }
+    }
+
+    // Phase 3: Topological sort + constraint resolution
+    const order = topoOrder(elements, constraints);
+    const resolvedState = JSON.parse(JSON.stringify(animState));
+    const evalCtx = { measurements };
+
+    for (const id of order) {
+      const c = constraints.find(cc => cc.target === id);
+      if (!c) continue;
+      if (!resolvedState[id]) resolvedState[id] = {};
+
+      if (c.x) resolvedState[id].x = evalExpr(c.x, evalCtx);
+      if (c.y) resolvedState[id].y = evalExpr(c.y, evalCtx);
+      if (c.width) resolvedState[id].width = evalExpr(c.width, evalCtx);
+      if (c.height) resolvedState[id].height = evalExpr(c.height, evalCtx);
+
+      // Phase 4: Re-measure with resolved position (single-pass guarantee)
+      const el = elements.find(e => e.id === id);
+      if (el) {
+        const merged = { ...el, ...resolvedState[id] };
+        measurements[id] = measureElement(merged, { [id]: resolvedState[id] }, this.textMeasurer, this.ctx);
+      }
+    }
+
+    // Phase 5: Resolve group bounds from children
+    for (const el of elements) {
+      if (el.type === 'group' && el.children?.length) {
+        let gl = Infinity, gt = Infinity, gr = -Infinity, gb = -Infinity;
+        for (const cid of el.children) {
+          const cm = measurements[cid];
+          if (!cm?.bounds) continue;
+          gl = Math.min(gl, cm.bounds.left);
+          gt = Math.min(gt, cm.bounds.top);
+          gr = Math.max(gr, cm.bounds.right);
+          gb = Math.max(gb, cm.bounds.bottom);
+        }
+        if (gl !== Infinity) {
+          measurements[el.id] = {
+            x: gl, y: gt, width: gr - gl, height: gb - gt,
+            bounds: { left: gl, right: gr, top: gt, bottom: gb },
+            centerX: (gl + gr) / 2, centerY: (gt + gb) / 2
+          };
+        }
+      }
+    }
+
+    // Phase 6: Detect violations
+    const violations = detectViolations(measurements, this.spec);
+
+    return { time: t, elements, state: resolvedState, measurements, constraints, order, violations };
+  }
+
+  evaluateExpression(expr, measurements) {
+    return evalExpr(expr, { measurements });
+  }
+
+  // --- Rendering -----------------------------------------------------------
+  renderFrame(t) {
+    const s = this.evaluate(t);
+    if (!this.ctx) return s;
+    const ctx = this.ctx;
+    const w = this.canvas.width, h = this.canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.fillStyle = this.spec.metadata?.background || '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+
+    // Render in z-order (array order)
+    for (const el of s.elements) {
+      const m = s.measurements[el.id];
+      if (!m) continue;
+      this._renderElement(el, m, s);
+    }
+    return s;
+  }
+
+  _renderElement(el, m, state) {
+    const ctx = this.ctx;
+    switch (el.type) {
+      case 'rectangle':
+      case 'frame': {
+        ctx.save();
+        if (el.fill) { ctx.fillStyle = el.fill; ctx.fillRect(m.x, m.y, m.width, m.height); }
+        if (el.stroke) {
+          ctx.strokeStyle = el.stroke;
+          ctx.lineWidth = el.stroke_width || 1;
+          ctx.strokeRect(m.x, m.y, m.width, m.height);
+        }
+        if (el.type === 'frame' && !el.fill && !el.stroke) {
+          ctx.strokeStyle = '#ddd';
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(m.x, m.y, m.width, m.height);
+          ctx.setLineDash([]);
+        }
+        ctx.restore();
+        break;
+      }
+      case 'circle': {
+        ctx.save();
+        ctx.fillStyle = el.fill || '#ff6b6b';
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, el.radius || 10, 0, Math.PI * 2);
+        ctx.fill();
+        if (el.stroke) { ctx.strokeStyle = el.stroke; ctx.lineWidth = el.stroke_width || 1; ctx.stroke(); }
+        ctx.restore();
+        break;
+      }
+      case 'text': {
+        ctx.save();
+        ctx.font = el.font || '16px Inter';
+        ctx.fillStyle = el.color || '#333';
+        ctx.fillText(el.content || '', m.x, m.y);
+        ctx.restore();
+        break;
+      }
+      case 'text_box': {
+        ctx.save();
+        ctx.font = m.font || '16px Inter';
+        ctx.fillStyle = el.color || '#111';
+        const lh = m.lineHeight || 20;
+        const lines = m.lines || [];
+        for (let i = 0; i < lines.length; i++) {
+          ctx.fillText(lines[i], m.x, m.y + (i + 1) * lh - lh * 0.2);
+        }
+        if (el.stroke_box) {
+          ctx.strokeStyle = el.stroke_box;
+          ctx.strokeRect(m.x, m.y, m.width, m.height);
+        }
+        ctx.restore();
+        break;
+      }
+      case 'image': {
+        ctx.save();
+        const img = this._getImage(el.src);
+        if (img?.complete && img.naturalWidth) {
+          const fit = el.fit || 'contain';
+          const iw = img.naturalWidth, ih = img.naturalHeight;
+          const rw = m.width / iw, rh = m.height / ih;
+          let dw, dh;
+          if (fit === 'fill') { dw = m.width; dh = m.height; }
+          else if (fit === 'cover') { const r = Math.max(rw, rh); dw = iw * r; dh = ih * r; }
+          else { const r = Math.min(rw, rh); dw = iw * r; dh = ih * r; }
+          ctx.drawImage(img, m.x + (m.width - dw) / 2, m.y + (m.height - dh) / 2, dw, dh);
+        } else {
+          ctx.strokeStyle = '#ccc';
+          ctx.strokeRect(m.x, m.y, m.width, m.height);
+          ctx.fillStyle = '#eee';
+          ctx.font = '12px Inter';
+          ctx.fillText('Loading...', m.x + 4, m.y + 16);
+        }
+        ctx.restore();
+        break;
+      }
+      case 'connector': {
+        ctx.save();
+        ctx.strokeStyle = el.stroke || '#666';
+        ctx.lineWidth = el.stroke_width || 2;
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        // Bezier curve for connectors
+        if (el.curveType === 'straight') {
+          ctx.lineTo(m.x2, m.y2);
+        } else {
+          const midX = (m.x + m.x2) / 2;
+          ctx.bezierCurveTo(midX, m.y, midX, m.y2, m.x2, m.y2);
+        }
+        ctx.stroke();
+        // Arrow head
+        if (el.arrow !== false) {
+          const angle = Math.atan2(m.y2 - m.y, m.x2 - m.x);
+          const sz = 8;
+          ctx.beginPath();
+          ctx.moveTo(m.x2, m.y2);
+          ctx.lineTo(m.x2 - sz * Math.cos(angle - Math.PI / 6), m.y2 - sz * Math.sin(angle - Math.PI / 6));
+          ctx.lineTo(m.x2 - sz * Math.cos(angle + Math.PI / 6), m.y2 - sz * Math.sin(angle + Math.PI / 6));
+          ctx.closePath();
+          ctx.fillStyle = el.stroke || '#666';
+          ctx.fill();
+        }
+        ctx.restore();
+        break;
+      }
+      case 'line': {
+        ctx.save();
+        ctx.strokeStyle = el.stroke || '#333';
+        ctx.lineWidth = el.stroke_width || 2;
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(m.x2, m.y2);
+        ctx.stroke();
+        ctx.restore();
+        break;
+      }
+      // group renders nothing itself — children render individually
+    }
+  }
+
+  _getImage(src) {
+    if (!src) return null;
+    if (this._imageCache.has(src)) return this._imageCache.get(src);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = src;
+    this._imageCache.set(src, img);
+    return img;
+  }
+
+  // --- Mode C: Command protocol -------------------------------------------
+  executeCommand(cmd) {
+    const result = { success: false, violations: [], message: '' };
+    try {
+      switch (cmd.type) {
+        case 'add_element': {
+          const el = cmd.element;
+          if (!el?.id || !el?.type) { result.message = 'Element requires id and type'; return result; }
+          if (this.spec.elements.find(e => e.id === el.id)) { result.message = `Element ${el.id} already exists`; return result; }
+          this.spec.elements.push(el);
+          result.success = true;
+          result.message = `Added ${el.type} "${el.id}"`;
+          break;
+        }
+        case 'remove_element': {
+          const idx = this.spec.elements.findIndex(e => e.id === cmd.elementId);
+          if (idx === -1) { result.message = `Element ${cmd.elementId} not found`; return result; }
+          this.spec.elements.splice(idx, 1);
+          // Remove constraints targeting this element
+          this.spec.constraints = (this.spec.constraints || []).filter(c => c.target !== cmd.elementId);
+          result.success = true;
+          result.message = `Removed "${cmd.elementId}"`;
+          break;
+        }
+        case 'update_element': {
+          const el = this.spec.elements.find(e => e.id === cmd.elementId);
+          if (!el) { result.message = `Element ${cmd.elementId} not found`; return result; }
+          Object.assign(el, cmd.props);
+          result.success = true;
+          result.message = `Updated "${cmd.elementId}"`;
+          break;
+        }
+        case 'add_constraint': {
+          if (!this.spec.constraints) this.spec.constraints = [];
+          const existing = this.spec.constraints.find(c => c.target === cmd.constraint.target);
+          if (existing) {
+            Object.assign(existing, cmd.constraint);
+          } else {
+            this.spec.constraints.push(cmd.constraint);
+          }
+          result.success = true;
+          result.message = `Constraint set for "${cmd.constraint.target}"`;
+          break;
+        }
+        case 'set_layout': {
+          // Apply a named layout template
+          result.success = true;
+          result.message = `Layout applied: ${cmd.layout}`;
+          break;
+        }
+        case 'add_animation': {
+          if (!this.spec.animations) this.spec.animations = [];
+          this.spec.animations.push(cmd.animation);
+          result.success = true;
+          result.message = `Animation added for "${cmd.animation.target}"`;
+          break;
+        }
+        default:
+          result.message = `Unknown command type: ${cmd.type}`;
+      }
+
+      // Post-validation: evaluate and check for violations
+      if (result.success) {
+        const state = this.evaluate(0);
+        result.violations = state.violations;
+        if (result.violations.length > 0) {
+          result.message += ` (${result.violations.length} violation(s) detected)`;
+        }
+      }
+    } catch (e) {
+      result.message = `Command failed: ${e.message}`;
+    }
+
+    this._commandLog.push({ cmd, result, timestamp: Date.now() });
+    return result;
+  }
+
+  getCommandLog() {
+    return this._commandLog;
+  }
+
+  // --- Dependency graph introspection ------------------------------------
+  getDependencyGraph() {
+    const { constraints = [] } = this.spec;
+    const g = {};
+    for (const c of constraints) {
+      const refs = new Set();
+      if (c.x) extractDeps(c.x).forEach(d => { if (d !== c.target) refs.add(d); });
+      if (c.y) extractDeps(c.y).forEach(d => { if (d !== c.target) refs.add(d); });
+      if (c.width) extractDeps(c.width).forEach(d => { if (d !== c.target) refs.add(d); });
+      if (c.height) extractDeps(c.height).forEach(d => { if (d !== c.target) refs.add(d); });
+      g[c.target] = Array.from(refs);
+    }
+    return g;
+  }
+}
+
+// --- Connection site resolver ----------------------------------------------
+function getConnectionSite(m, site) {
+  const b = m.bounds || { left: m.x, right: m.x + (m.width || 0), top: m.y, bottom: m.y + (m.height || 0) };
+  switch (site) {
+    case 'top': return { x: (b.left + b.right) / 2, y: b.top };
+    case 'bottom': return { x: (b.left + b.right) / 2, y: b.bottom };
+    case 'left': return { x: b.left, y: (b.top + b.bottom) / 2 };
+    case 'right': return { x: b.right, y: (b.top + b.bottom) / 2 };
+    case 'center': return { x: (b.left + b.right) / 2, y: (b.top + b.bottom) / 2 };
+    default: return { x: b.right, y: (b.top + b.bottom) / 2 };
+  }
+}
+
+// --- Exports ---------------------------------------------------------------
+window.SpatialFlowEngine = SpatialFlowEngine;
+window.SFPriority = Priority;
+window.SFEasing = Easing;
+window.SF_evalExpr = (expr, measurements) => evalExpr(expr, { measurements });
+window.__sfInternals = { interpKeyframes, evalExpr, measureElement, topoOrder, TextMeasurer, resolveAutoLayout, resolveIntrinsicSize, detectViolations };
+
+</script>
+<script>
+(function(){
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+
+  // --- Value display helpers ---
+  const sliders = ['duration','travel','offset','chainCount','chainGap','gridRows','gridCols','rowGap','colGap','slideTextWidth','slideTitleSize','slideBodySize','frameSpacing','framePadding'];
+  for(const id of sliders) {
+    const el = document.getElementById(id);
+    const valEl = document.getElementById(id+'Val');
+    if(el && valEl) { el.addEventListener('input', ()=> valEl.textContent = el.value); }
+  }
+
+  // --- Text engine badge ---
+  const badge = document.getElementById('textEngineBadge');
+  if(window.Pretext) { badge.textContent = 'Pretext ✓'; badge.className = 'badge pretext'; }
+  else { badge.textContent = 'Canvas fallback'; badge.className = 'badge canvas'; }
+
+  // --- Spec builders -------------------------------------------------------
+  function val(id) { return +(document.getElementById(id)?.value || 0); }
+
+  const heroSpec = () => ({
+    metadata: { width: canvas.width, height: canvas.height, duration_ms: val('duration'), frame_rate: 60, background: '#0d0d14' },
+    elements: [
+      { id:'box', type:'rectangle', x:80, y:120, width:140, height:90, fill:'#4ecdc4', stroke:'rgba(78,205,196,0.3)', stroke_width:1 },
+      { id:'label', type:'text', x:80, y:260, content:'Hello SpatialFlow', font:'20px DM Sans', color:'#c8c8d8' },
+      { id:'dot', type:'circle', x:200, y:200, radius:12, fill:'#ff6b6b' }
+    ],
+    animations: [
+      { target:'box', property:'x', easing:'ease_out', keyframes:[{time:0,value:80},{time:val('duration')/2,value:val('travel')},{time:val('duration'),value:80}] }
+    ],
+    constraints: [
+      { target:'dot', x:`box.bounds.right + ${val('offset')}`, y:'box.centerY' },
+      { target:'label', x:'box.centerX' }
+    ]
+  });
+
+  const chainSpec = () => {
+    const N=val('chainCount'), gap=val('chainGap'), dur=val('duration'), travel=val('travel');
+    const elements=[], constraints=[];
+    const animations=[{target:'box0',property:'x',easing:'ease_out',keyframes:[{time:0,value:60},{time:dur/2,value:travel},{time:dur,value:60}]}];
+    for(let i=0;i<N;i++){
+      elements.push({id:`box${i}`,type:'rectangle',x:i===0?60:0,y:120,width:50,height:36,fill:'rgba(126,184,255,0.15)',stroke:'rgba(126,184,255,0.3)',stroke_width:1});
+      if(i>0) constraints.push({target:`box${i}`,x:`box${i-1}.bounds.right + ${gap}`});
+    }
+    elements.push({id:'tail',type:'circle',x:0,y:138,radius:8,fill:'#ff6b6b'});
+    constraints.push({target:'tail',x:`box${N-1}.bounds.right + ${gap}`,y:`box${N-1}.centerY`});
+    return {metadata:{width:canvas.width,height:canvas.height,duration_ms:dur,frame_rate:60,background:'#0d0d14'},elements,animations,constraints};
+  };
+
+  const gridSpec = () => {
+    const rows=val('gridRows'),cols=val('gridCols'),rg=val('rowGap'),cg=val('colGap'),dur=val('duration'),travel=val('travel');
+    const elements=[],constraints=[],animations=[];
+    const w=56,h=36;
+    animations.push({target:'cell_0_0',property:'x',easing:'ease_out',keyframes:[{time:0,value:60},{time:dur/2,value:travel},{time:dur,value:60}]});
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const id=`cell_${r}_${c}`;
+      elements.push({id,type:'rectangle',x:c===0?60:0,y:r===0?100:0,width:w,height:h,fill:'rgba(80,232,144,0.1)',stroke:'rgba(80,232,144,0.25)',stroke_width:1});
+      if(c>0) constraints.push({target:id,x:`cell_${r}_${c-1}.bounds.right + ${cg}`});
+      if(r>0){ if(c===0) constraints.push({target:id,y:`cell_${r-1}_0.bounds.bottom + ${rg}`}); else constraints.push({target:id,y:`cell_${r}_${c-1}.y`}); }
+    }
+    return {metadata:{width:canvas.width,height:canvas.height,duration_ms:dur,frame_rate:60,background:'#0d0d14'},elements,animations,constraints};
+  };
+
+  const slideSpec = () => {
+    const tw=val('slideTextWidth'), ts=val('slideTitleSize'), bs=val('slideBodySize'), dur=val('duration');
+    return {
+      metadata:{width:canvas.width,height:canvas.height,duration_ms:dur,frame_rate:60,background:'#0d0d14'},
+      elements:[
+        {id:'title',type:'text_box',x:60,y:60,width:tw,content:'Introducing SpatialFlow',font:`${ts}px DM Sans`,lineHeight:1.2,color:'#e8e8f0',stroke_box:'rgba(126,184,255,0.08)'},
+        {id:'body',type:'text_box',x:60,y:0,width:tw,content:'Measurement-driven constraints unify layout and animation in a single-pass DAG solver. Deterministic. Agent-native. Expressions reference real geometry — not abstract coordinates.',font:`${bs}px DM Sans`,lineHeight:1.5,color:'#8888a0'},
+        {id:'pic',type:'image',x:0,y:60,width:480,height:340,src:'https://picsum.photos/seed/spatialflow2/960/680',fit:'cover'},
+        {id:'caption',type:'text',x:0,y:0,content:'Figure: constraint-driven layout',font:'13px JetBrains Mono',color:'#6a6a80'}
+      ],
+      animations:[{target:'title',property:'x',easing:'ease_out',keyframes:[{time:0,value:40},{time:dur/2,value:60},{time:dur,value:40}]}],
+      constraints:[
+        {target:'body',y:'title.bounds.bottom + 20',x:'title.x'},
+        {target:'pic',x:'body.bounds.right + 48',y:'title.y'},
+        {target:'caption',x:'pic.x',y:'pic.bounds.bottom + 12'}
+      ]
+    };
+  };
+
+  const threeColSpec = () => {
+    const dur=val('duration');
+    const colW=250, startX=60, startY=100, gap=32;
+    return {
+      metadata:{width:canvas.width,height:canvas.height,duration_ms:dur,frame_rate:60,background:'#0d0d14'},
+      elements:[
+        {id:'heading',type:'text_box',x:startX,y:40,width:840,content:'Three-Column Comparison',font:'32px DM Sans',lineHeight:1.2,color:'#e8e8f0'},
+        {id:'h1',type:'text_box',x:startX,y:startY,width:colW,content:'Constraint-Based',font:'18px DM Sans',lineHeight:1.3,color:  '#7eb8ff'},
+        {id:'b1',type:'text_box',x:startX,y:0,width:colW,content:'DAG solver resolves spatial relationships in topological order. Single-pass. O(V+E). No iteration.',font:'14px DM Sans',lineHeight:1.6,color:'#8888a0'},
+        {id:'h2',type:'text_box',x:0,y:startY,width:colW,content:'Measurement-Driven',font:'18px DM Sans',lineHeight:1.3,color:'#4ecdc4'},
+        {id:'b2',type:'text_box',x:0,y:0,width:colW,content:'Real rendered measurements feed back into the constraint system. Text reflow drives layout — not the other way around.',font:'14px DM Sans',lineHeight:1.6,color:'#8888a0'},
+        {id:'h3',type:'text_box',x:0,y:startY,width:colW,content:'Agent-Native',font:'18px DM Sans',lineHeight:1.3,color:'#ff6b6b'},
+        {id:'b3',type:'text_box',x:0,y:0,width:colW,content:'Mode C parametric programs let AI agents manipulate layout intent — not pixel coordinates. Violation feedback enables retry loops.',font:'14px DM Sans',lineHeight:1.6,color:'#8888a0'},
+        // Divider lines
+        {id:'div1',type:'line',x:0,y:startY-10,x2:0,y2:420,stroke:'rgba(126,184,255,0.15)',stroke_width:1},
+        {id:'div2',type:'line',x:0,y:startY-10,x2:0,y2:420,stroke:'rgba(126,184,255,0.15)',stroke_width:1}
+      ],
+      animations:[],
+      constraints:[
+        {target:'b1',y:'h1.bounds.bottom + 12',x:'h1.x'},
+        {target:'h2',x:`h1.bounds.right + ${gap}`},
+        {target:'b2',y:'h2.bounds.bottom + 12',x:'h2.x'},
+        {target:'h3',x:`h2.bounds.right + ${gap}`},
+        {target:'b3',y:'h3.bounds.bottom + 12',x:'h3.x'},
+        {target:'div1',x:`h2.x - ${gap/2}`,y:`${startY - 10}`},
+        {target:'div2',x:`h3.x - ${gap/2}`,y:`${startY - 10}`}
+      ]
+    };
+  };
+
+  const autoFrameSpec = () => {
+    const sp=val('frameSpacing'), pad=val('framePadding');
+    const dir=document.getElementById('frameDir').value;
+    const pAlign=document.getElementById('framePrimary').value;
+    const cAlign=document.getElementById('frameCounter').value;
+    return {
+      metadata:{width:canvas.width,height:canvas.height,duration_ms:0,frame_rate:60,background:'#0d0d14'},
+      elements:[
+        {id:'frame1',type:'frame',x:60,y:60,width:500,height:380,direction:dir,spacing:sp,padding:pad,primaryAlign:pAlign,counterAlign:cAlign,children:['card1','card2','card3'],stroke:'rgba(126,184,255,0.2)',stroke_width:1},
+        {id:'card1',type:'rectangle',x:0,y:0,width:140,height:100,fill:'rgba(126,184,255,0.12)',stroke:'rgba(126,184,255,0.3)',stroke_width:1,flexGrow:1},
+        {id:'card2',type:'rectangle',x:0,y:0,width:140,height:80,fill:'rgba(78,205,196,0.12)',stroke:'rgba(78,205,196,0.3)',stroke_width:1,flexGrow:2},
+        {id:'card3',type:'rectangle',x:0,y:0,width:140,height:120,fill:'rgba(255,107,107,0.12)',stroke:'rgba(255,107,107,0.3)',stroke_width:1,flexGrow:1},
+        {id:'info',type:'text',x:60,y:480,content:`Frame: dir=${dir} spacing=${sp} pad=${pad} primary=${pAlign} counter=${cAlign}`,font:'12px JetBrains Mono',color:'#6a6a80'}
+      ],
+      animations:[],
+      constraints:[]
+    };
+  };
+
+  const connectorSpec = () => {
+    return {
+      metadata:{width:canvas.width,height:canvas.height,duration_ms:val('duration'),frame_rate:60,background:'#0d0d14'},
+      elements:[
+        {id:'a',type:'rectangle',x:100,y:200,width:120,height:70,fill:'rgba(126,184,255,0.15)',stroke:'rgba(126,184,255,0.4)',stroke_width:1},
+        {id:'labelA',type:'text',x:0,y:0,content:'Source',font:'14px DM Sans',color:'#7eb8ff'},
+        {id:'b',type:'rectangle',x:400,y:120,width:120,height:70,fill:'rgba(78,205,196,0.15)',stroke:'rgba(78,205,196,0.4)',stroke_width:1},
+        {id:'labelB',type:'text',x:0,y:0,content:'Target A',font:'14px DM Sans',color:'#4ecdc4'},
+        {id:'c',type:'rectangle',x:400,y:320,width:120,height:70,fill:'rgba(255,107,107,0.15)',stroke:'rgba(255,107,107,0.4)',stroke_width:1},
+        {id:'labelC',type:'text',x:0,y:0,content:'Target B',font:'14px DM Sans',color:'#ff6b6b'},
+        {id:'conn1',type:'connector',from:'a',to:'b',fromSite:'right',toSite:'left',stroke:'rgba(126,184,255,0.6)',stroke_width:2},
+        {id:'conn2',type:'connector',from:'a',to:'c',fromSite:'right',toSite:'left',stroke:'rgba(255,107,107,0.5)',stroke_width:2}
+      ],
+      animations:[
+        {target:'a',property:'x',easing:'ease_in_out',keyframes:[{time:0,value:100},{time:val('duration')/2,value:200},{time:val('duration'),value:100}]}
+      ],
+      constraints:[
+        {target:'labelA',x:'a.centerX',y:'a.bounds.top - 18'},
+        {target:'labelB',x:'b.centerX',y:'b.bounds.top - 18'},
+        {target:'labelC',x:'c.centerX',y:'c.bounds.top - 18'}
+      ]
+    };
+  };
+
+  // --- Demo switcher -------------------------------------------------------
+  function buildSpec() {
+    const m = document.getElementById('demoSelect').value;
+    if(m==='hero') return heroSpec();
+    if(m==='chain') return chainSpec();
+    if(m==='grid') return gridSpec();
+    if(m==='threeCol') return threeColSpec();
+    if(m==='autoframe') return autoFrameSpec();
+    if(m==='connector') return connectorSpec();
+    return slideSpec();
+  }
+
+  function showControlsForDemo(mode) {
+    const panels = {heroControls:['hero'],chainControls:['chain'],gridControls:['grid'],slideControls:['slide','threeCol'],frameControls:['autoframe']};
+    for(const [id,modes] of Object.entries(panels)) {
+      const el = document.getElementById(id);
+      if(el) el.style.display = modes.includes(mode) ? 'block' : 'none';
+    }
+  }
+
+  // --- Engine init ---------------------------------------------------------
+  let spec = buildSpec();
+  let engine = new window.SpatialFlowEngine(spec, canvas);
+  showControlsForDemo('slide');
+
+  // --- Hover + inspector ---------------------------------------------------
+  let mouse = {x:0,y:0};
+  let lastState = null;
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mouse.x = (e.clientX - r.left) * (canvas.width / r.width);
+    mouse.y = (e.clientY - r.top) * (canvas.height / r.height);
+  });
+
+  function hitTest(state, x, y) {
+    for(let i=state.elements.length-1;i>=0;i--){
+      const el=state.elements[i]; const m=state.measurements[el.id]; if(!m) continue;
+      const b=m.bounds;
+      if(x>=b.left && x<=b.right && y>=b.top && y<=b.bottom) return el.id;
+    }
+    return null;
+  }
+
+  function drawInspector(state) {
+    const id=hitTest(state,mouse.x,mouse.y);
+    const box = document.getElementById('inspectorBox');
+    if(!id) { box.textContent='Hover over an element'; return; }
+    const m=state.measurements[id];
+    const el=state.elements.find(e=>e.id===id);
+    const c=(state.constraints||[]).find(cc=>cc.target===id);
+    let info = `id: ${id}\ntype: ${el?.type}\n`;
+    info += `x: ${m.x?.toFixed(1)}  y: ${m.y?.toFixed(1)}\n`;
+    if(m.width) info += `w: ${m.width?.toFixed(1)}  h: ${m.height?.toFixed(1)}\n`;
+    if(m.lines) info += `lines: ${m.lines.length}  lh: ${m.lineHeight?.toFixed(1)}\n`;
+    if(c) {
+      info += `\nConstraints:\n`;
+      if(c.x) info += `  x = ${c.x}\n    → ${evalResolved(c.x, state.measurements)}\n`;
+      if(c.y) info += `  y = ${c.y}\n    → ${evalResolved(c.y, state.measurements)}\n`;
+    }
+    box.textContent = info;
+
+    // Highlight on canvas
+    const b = m.bounds;
+    ctx.save();
+    ctx.strokeStyle='#ff2d55'; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    ctx.strokeRect(b.left,b.top,b.right-b.left,b.bottom-b.top);
+    ctx.setLineDash([]);
+    ctx.fillStyle='#ff2d55'; ctx.beginPath(); ctx.arc(m.centerX||m.x,m.centerY||m.y,3,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function evalResolved(expr, measurements) {
+    try { return window.SF_evalExpr(expr, measurements)?.toFixed(2); }
+    catch { return '?'; }
+  }
+
+  // --- DAG overlay ---------------------------------------------------------
+  function drawDAG(state) {
+    if(!document.getElementById('showDag').checked) return;
+    const constraints=state.constraints||[];
+    ctx.save(); ctx.lineWidth=1;
+    for(const c of constraints) {
+      const tm=state.measurements[c.target]; if(!tm) continue;
+      const tpt={x:tm.centerX||tm.x, y:tm.centerY||tm.y};
+      const deps=new Set();
+      if(c.x) extractDeps(c.x).forEach(d=>{if(d!==c.target) deps.add(d);});
+      if(c.y) extractDeps(c.y).forEach(d=>{if(d!==c.target) deps.add(d);});
+      for(const r of deps){
+        const rm=state.measurements[r]; if(!rm) continue;
+        const rpt={x:rm.centerX||rm.x, y:rm.centerY||rm.y};
+        ctx.strokeStyle='rgba(126,184,255,0.25)';
+        ctx.beginPath(); ctx.moveTo(rpt.x,rpt.y); ctx.lineTo(tpt.x,tpt.y); ctx.stroke();
+        // Arrow
+        const dx=tpt.x-rpt.x, dy=tpt.y-rpt.y, len=Math.hypot(dx,dy)||1;
+        const ux=dx/len, uy=dy/len;
+        const ax=tpt.x-ux*8, ay=tpt.y-uy*8;
+        ctx.beginPath(); ctx.moveTo(tpt.x,tpt.y);
+        ctx.lineTo(ax-uy*3,ay+ux*3); ctx.lineTo(ax+uy*3,ay-ux*3); ctx.closePath();
+        ctx.fillStyle='rgba(126,184,255,0.35)'; ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function extractDeps(expr) {
+    const ids=new Set();
+    if(!expr) return ids;
+    expr.replace(/([A-Za-z_][A-Za-z0-9_]*)\s*\./g,(_,g)=>{ ids.add(g); return _; });
+    return ids;
+  }
+
+  // --- Bounds overlay ------------------------------------------------------
+  function drawBounds(state) {
+    if(!document.getElementById('showBounds').checked) return;
+    ctx.save(); ctx.strokeStyle='rgba(200,200,216,0.08)'; ctx.lineWidth=0.5;
+    for(const el of state.elements) {
+      const m=state.measurements[el.id]; if(!m?.bounds) continue;
+      const b=m.bounds;
+      ctx.strokeRect(b.left,b.top,b.right-b.left,b.bottom-b.top);
+    }
+    ctx.restore();
+  }
+
+  // --- Violation overlay ---------------------------------------------------
+  function drawViolations(state) {
+    if(!document.getElementById('showViolations').checked) return;
+    const box = document.getElementById('violationsBox');
+    if(!state.violations?.length) { box.innerHTML='<em style="color:var(--text-dim);font-family:var(--mono);font-size:10px;">None</em>'; return; }
+    let html='';
+    ctx.save();
+    for(const v of state.violations) {
+      if(v.type==='overlap') {
+        const ma=state.measurements[v.elements[0]], mb=state.measurements[v.elements[1]];
+        if(ma?.bounds && mb?.bounds) {
+          const l=Math.max(ma.bounds.left,mb.bounds.left), r=Math.min(ma.bounds.right,mb.bounds.right);
+          const t=Math.max(ma.bounds.top,mb.bounds.top), bt=Math.min(ma.bounds.bottom,mb.bounds.bottom);
+          ctx.fillStyle='rgba(255,180,50,0.06)'; ctx.fillRect(l,t,r-l,bt-t);
+          ctx.strokeStyle='rgba(255,180,50,0.3)'; ctx.strokeRect(l,t,r-l,bt-t);
+        }
+        html+=`<div class="violation overlap">${v.elements[0]} ∩ ${v.elements[1]} (${Math.round(v.area)}px²)</div>`;
+      } else if(v.type==='overflow') {
+        html+=`<div class="violation overflow">${v.elementId} overflows slide</div>`;
+      }
+    }
+    ctx.restore();
+    box.innerHTML = html;
+  }
+
+  // --- Graph panel ---------------------------------------------------------
+  function updateGraph(state) {
+    const constraints=state.constraints||[];
+    const order=state.order||[];
+    const lines=[];
+    for(const id of order) {
+      const c=constraints.find(cc=>cc.target===id);
+      if(!c) { lines.push(`${id}`); continue; }
+      const deps=new Set();
+      if(c.x) extractDeps(c.x).forEach(d=>{if(d!==id) deps.add(d);});
+      if(c.y) extractDeps(c.y).forEach(d=>{if(d!==id) deps.add(d);});
+      lines.push(`${id}  ←  ${Array.from(deps).join(', ')||'(root)'}`);
+    }
+    document.getElementById('graphBox').textContent=lines.join('\n');
+  }
+
+  // --- Animation loop ------------------------------------------------------
+  let raf=null, t0=null, frameCount=0, lastFpsTime=0;
+
+  function renderOnce() {
+    const s=engine.renderFrame(0); lastState=s;
+    drawBounds(s); drawDAG(s); drawInspector(s); drawViolations(s); updateGraph(s); updateStats(s);
+  }
+
+  function frame(ts) {
+    const dur=spec.metadata.duration_ms;
+    if(dur<=0) { renderOnce(); if(raf){cancelAnimationFrame(raf);raf=null;} return; }
+    if(!t0) { t0=ts; lastFpsTime=ts; }
+    const t=(ts-t0)%dur;
+    const s=engine.renderFrame(t); lastState=s;
+    drawBounds(s); drawDAG(s); drawInspector(s); drawViolations(s); updateGraph(s);
+
+    frameCount++;
+    if(ts-lastFpsTime>=1000) {
+      document.getElementById('fpsDisplay').textContent=frameCount+' fps';
+      frameCount=0; lastFpsTime=ts;
+    }
+    updateStats(s);
+    raf=requestAnimationFrame(frame);
+  }
+
+  function start() { if(raf) cancelAnimationFrame(raf); t0=null; raf=requestAnimationFrame(frame); }
+  function stop() { if(raf) cancelAnimationFrame(raf); raf=null; }
+
+  function updateStats(s) {
+    document.getElementById('elemCount').textContent=s.elements.length+' elements';
+    document.getElementById('constraintCount').textContent=(s.constraints||[]).length+' constraints';
+  }
+
+  // --- UI bindings ---------------------------------------------------------
+  document.getElementById('playBtn').onclick=start;
+  document.getElementById('pauseBtn').onclick=stop;
+  document.getElementById('seekBtn').onclick=()=>{ t0=null; };
+
+  // All input controls trigger rebuild
+  const allInputs=['duration','travel','offset','chainCount','chainGap','demoSelect','gridRows','gridCols','rowGap','colGap','slideTextWidth','slideTitleSize','slideBodySize','frameSpacing','framePadding','frameDir','framePrimary','frameCounter'];
+  for(const id of allInputs) {
+    const el=document.getElementById(id); if(!el) continue;
+    el.addEventListener('input',()=>{
+      const mode=document.getElementById('demoSelect').value;
+      showControlsForDemo(mode);
+      spec=buildSpec(); engine=new window.SpatialFlowEngine(spec,canvas); t0=null;
+      if(spec.metadata.duration_ms<=0) { stop(); renderOnce(); } else { if(!raf) start(); }
+    });
+  }
+
+  // --- Mode C command input ------------------------------------------------
+  document.getElementById('cmdSend').onclick = () => {
+    const input = document.getElementById('cmdInput');
+    const logEl = document.getElementById('cmdLog');
+    try {
+      const cmd = JSON.parse(input.value);
+      const result = engine.executeCommand(cmd);
+      const cls = result.success ? 'ok' : 'err';
+      logEl.innerHTML = `<div class="${cls}">${result.message}</div>` + logEl.innerHTML;
+      if(result.success) {
+        spec = engine.spec;
+        t0=null;
+        if(spec.metadata.duration_ms<=0) renderOnce(); else if(!raf) start(); else { /* already running */ }
+      }
+    } catch(e) {
+      logEl.innerHTML = `<div class="err">Parse error: ${e.message}</div>` + logEl.innerHTML;
+    }
+  };
+
+  // Ctrl+Enter to send
+  document.getElementById('cmdInput').addEventListener('keydown', e => {
+    if(e.key==='Enter' && (e.ctrlKey||e.metaKey)) { e.preventDefault(); document.getElementById('cmdSend').click(); }
+  });
+
+  // --- Boot ----------------------------------------------------------------
+  showControlsForDemo('slide');
+  if(spec.metadata.duration_ms<=0) renderOnce(); else start();
+
+})();
+</script>
+</body>
+</html>

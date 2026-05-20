@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>SpatialFlow — Semantic Intents</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0d14; --panel:#111119; --border:#1c1c2e; --surface:#16162a;
+    --text:#c8c8d8; --dim:#4a4a6a; --accent:#7eb8ff; --accent2:#4ecdc4;
+    --warn:#ff6b6b; --ok:#50e890; --gold:#f7b731; --violet:#c084fc;
+    --mono:'JetBrains Mono',monospace; --sans:'DM Sans',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);
+       height:100vh;display:grid;grid-template-columns:280px 1fr 380px;overflow:hidden;}
+
+  .panel{background:var(--panel);border-right:1px solid var(--border);
+          padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
+  .panel.right{border-right:none;border-left:1px solid var(--border);}
+
+  .ph{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;
+      text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  .ph::before{content:'';width:3px;height:12px;background:var(--accent);border-radius:2px;}
+  .ph.violet{color:var(--violet);}
+  .ph.violet::before{background:var(--violet);}
+
+  .section{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;}
+
+  .key-input{width:100%;font-family:var(--mono);font-size:11px;background:var(--bg);
+             border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:4px;outline:none;}
+  .key-input:focus{border-color:var(--accent);}
+  .key-status{font-family:var(--mono);font-size:10px;margin-top:4px;}
+  .key-status.ok{color:var(--ok);} .key-status.err{color:var(--warn);}
+
+  .intent-input{width:100%;font-family:var(--sans);font-size:13px;background:var(--surface);
+                border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;
+                outline:none;resize:none;min-height:72px;line-height:1.5;}
+  .intent-input:focus{border-color:var(--violet);}
+
+  .compile-btn{font-family:var(--mono);font-size:11px;padding:8px 14px;
+               background:rgba(192,132,252,.12);border:1px solid rgba(192,132,252,.35);
+               color:var(--violet);border-radius:4px;cursor:pointer;transition:all .15s;align-self:flex-end;}
+  .compile-btn:hover{background:rgba(192,132,252,.22);}
+  .compile-btn:disabled{opacity:.4;cursor:default;}
+
+  .example{font-family:var(--mono);font-size:10px;padding:5px 8px;background:var(--bg);
+            border:1px solid var(--border);color:var(--dim);border-radius:3px;
+            cursor:pointer;transition:all .15s;text-align:left;width:100%;}
+  .example:hover{color:var(--violet);border-color:var(--violet);}
+  .example-tag{font-size:9px;padding:1px 4px;border-radius:2px;margin-right:4px;}
+  .tag-reactive{background:rgba(80,232,144,.1);color:var(--ok);}
+  .tag-directional{background:rgba(247,183,49,.1);color:var(--gold);}
+  .tag-measure{background:rgba(78,205,196,.1);color:var(--accent2);}
+
+  .stress-btn{font-family:var(--mono);font-size:10px;padding:6px 10px;background:var(--surface);
+              border:1px solid var(--border);color:var(--dim);border-radius:3px;
+              cursor:pointer;transition:all .15s;width:100%;text-align:left;}
+  .stress-btn:hover{color:var(--accent);border-color:var(--accent);}
+
+  /* Canvas */
+  .canvas-wrap{display:flex;flex-direction:column;background:#08080f;overflow:hidden;height:100vh;}
+  .toolbar{display:flex;align-items:center;gap:8px;padding:8px 14px;flex-shrink:0;
+           background:var(--panel);border-bottom:1px solid var(--border);
+           font-family:var(--mono);font-size:10px;color:var(--dim);}
+  .badge{background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:3px;font-size:9px;}
+  .badge.live{color:var(--ok);border-color:rgba(80,232,144,.3);}
+  .badge.compiling{color:var(--violet);border-color:rgba(192,132,252,.3);animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .canvas-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;
+                background:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,.008) 10px,rgba(255,255,255,.008) 20px);}
+  canvas{display:block;cursor:crosshair;box-shadow:0 0 0 1px #2a2a4a,0 8px 40px rgba(0,0,0,.6);}
+
+  /* Intent Registry */
+  .intent-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;
+               overflow:hidden;transition:border-color .2s;}
+  .intent-card.stale{border-color:rgba(247,183,49,.4);}
+  .intent-card.active{border-color:rgba(80,232,144,.2);}
+  .intent-card.conflict{border-color:rgba(255,107,107,.45);}
+  .ic-header{padding:8px 10px;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;}
+  .ic-status{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .ic-status.active{background:var(--ok);box-shadow:0 0 6px rgba(80,232,144,.5);}
+  .ic-status.stale{background:var(--gold);box-shadow:0 0 6px rgba(247,183,49,.5);animation:pulse 2s infinite;}
+  .ic-status.conflict{background:var(--warn);box-shadow:0 0 6px rgba(255,107,107,.5);}
+  .ic-status.compiling{background:var(--violet);animation:pulse .6s infinite;}
+  .conflict-banner{background:rgba(255,107,107,.07);border-top:1px solid rgba(255,107,107,.15);
+                   padding:5px 10px;font-family:var(--mono);font-size:9px;color:var(--warn);}
+  .ic-natural{color:var(--text);font-size:10px;flex:1;}
+  .ic-type{font-size:9px;padding:1px 5px;border-radius:2px;}
+  .ic-body{padding:8px 10px;background:rgba(0,0,0,.3);border-top:1px solid var(--border);
+           font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.8;}
+  .ic-expr{color:var(--accent2);}
+  .ic-dep{color:var(--accent);font-size:9px;}
+  .ic-explain{color:var(--dim);font-style:italic;}
+  .ic-actions{display:flex;gap:4px;margin-top:6px;}
+  .ic-btn{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;transition:all .15s;}
+  .ic-btn.recompile{background:rgba(247,183,49,.08);border:1px solid rgba(247,183,49,.3);color:var(--gold);}
+  .ic-btn.recompile:hover{background:rgba(247,183,49,.18);}
+  .ic-btn.remove{background:rgba(255,107,107,.06);border:1px solid rgba(255,107,107,.2);color:var(--warn);}
+  .ic-btn.remove:hover{background:rgba(255,107,107,.16);}
+
+  .log-box{font-family:var(--mono);font-size:9px;color:var(--dim);background:rgba(0,0,0,.3);
+            border:1px solid var(--border);border-radius:3px;padding:6px;max-height:100px;
+            overflow-y:auto;white-space:pre-wrap;line-height:1.6;}
+
+  ::-webkit-scrollbar{width:3px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- LEFT PANEL -->
+<div class="panel">
+  <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text)">
+    Spatial<span style="color:var(--accent)">Flow</span>
+    <span style="font-size:10px;color:var(--dim);margin-left:6px">Semantic Intents</span>
+  </div>
+
+  <div class="ph">API Key</div>
+  <div class="section" style="display:flex;flex-direction:column;gap:6px;">
+    <input class="key-input" id="apiKey" type="password" placeholder="sk-ant-…"/>
+    <div class="key-status" id="keyStatus">Enter Anthropic API key</div>
+  </div>
+
+  <div class="ph violet">Declare Intent</div>
+  <div style="display:flex;flex-direction:column;gap:6px;">
+    <textarea class="intent-input" id="intentInput"
+      placeholder="Describe a spatial relationship in plain English…&#10;&#10;e.g. subtitle always 16px below the title&#10;e.g. dot always centered inside hero box"></textarea>
+    <button class="compile-btn" id="compileBtn">Compile Intent ◈</button>
+  </div>
+
+  <div class="ph">Examples</div>
+  <div style="display:flex;flex-direction:column;gap:4px;">
+    <button class="example" data-intent="subtitle always appears 16px directly below the title's bottom edge">
+      <span class="example-tag tag-reactive">reactive</span>subtitle below title
+    </button>
+    <button class="example" data-intent="dot always centered inside the hero box">
+      <span class="example-tag tag-reactive">reactive</span>dot inside hero box
+    </button>
+    <button class="example" data-intent="accent bar should be the same width as the title's actual rendered text">
+      <span class="example-tag tag-measure">measure</span>accent bar = title width
+    </button>
+    <button class="example" data-intent="hero label always appears 10px below the hero box, left-aligned with it">
+      <span class="example-tag tag-reactive">reactive</span>label below hero box
+    </button>
+    <button class="example" data-intent="the label should appear on whichever side of the hero box has more horizontal space">
+      <span class="example-tag tag-directional">directional</span>label: side with more space
+    </button>
+  </div>
+
+  <div class="ph">Stress Test</div>
+  <div style="display:flex;flex-direction:column;gap:4px;">
+    <button class="stress-btn" id="growTitle">↕ Grow title (3 lines)</button>
+    <button class="stress-btn" id="shrinkTitle">↕ Shrink title (1 line)</button>
+    <button class="stress-btn" id="heroLeft">← Move hero box left</button>
+    <button class="stress-btn" id="heroRight">→ Move hero box right</button>
+    <button class="stress-btn" id="resetBtn" style="color:var(--warn);border-color:rgba(255,107,107,.2)">↺ Reset layout</button>
+  </div>
+</div>
+
+<!-- CANVAS -->
+<div class="canvas-wrap">
+  <div class="toolbar">
+    <span>SpatialFlow — Phase 3</span>
+    <span class="badge live" id="statusBadge">● LIVE</span>
+    <span id="intentCount" class="badge">0 intents</span>
+    <span id="constraintCount" class="badge">0 constraints</span>
+    <span style="margin-left:auto;font-size:9px;" id="fpsEl">— fps</span>
+  </div>
+  <div class="canvas-stage" id="canvasStage">
+    <canvas id="c" width="960" height="540"></canvas>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel right">
+  <div class="ph violet">Intent Registry</div>
+  <div id="intentRegistry" style="display:flex;flex-direction:column;gap:8px;">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dim);padding:8px 0;">
+      No intents yet. Compile one to get started.
+    </div>
+  </div>
+
+  <div class="ph" style="margin-top:4px;flex-shrink:0;">Compiler Log</div>
+  <div class="log-box" id="compilerLog">Waiting…</div>
+
+  <div class="ph" style="flex-shrink:0;">Phase 3 — How It Works</div>
+  <div class="section" style="font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.8;">
+    <span style="color:var(--ok)">reactive</span> — expression re-evaluates every frame. Layout change handled automatically.<br><br>
+    <span style="color:var(--gold)">directional</span> — intent depends on WHICH direction to apply. Goes stale when layout context shifts. Needs re-compile.<br><br>
+    <span style="color:var(--accent2)">measure</span> — tracks actual rendered measurements (text width, content height). Always live.
+  </div>
+</div>
+
+<script src="spatialflow-engine.js"></script>
+<script>
+// ============================================================================
+// SpatialFlowLive
+// ============================================================================
+class SpatialFlowLive extends SpatialFlowEngine {
+  constructor(spec, canvas) {
+    super(spec, canvas);
+    this._sigs = { mouse: { x: 480, y: 270 }, time: { ms: 0, s: 0, norm: 0 } };
+    this._raf = null; this._playing = false; this._t0 = null; this._pausedAt = 0;
+    this._fps = 0; this._fcount = 0; this._lastFps = 0; this._onFrame = null;
+    const c = canvas;
+    this._mm = (e) => {
+      const r = c.getBoundingClientRect();
+      this._sigs.mouse = { x: (e.clientX - r.left) * (960/r.width), y: (e.clientY - r.top) * (540/r.height) };
+    };
+    c.addEventListener('mousemove', this._mm);
+  }
+  start(cb) {
+    if (this._playing) return;
+    this._playing = true; this._t0 = performance.now() - (this._pausedAt||0); this._onFrame = cb;
+    this._loop();
+  }
+  _loop() {
+    this._raf = requestAnimationFrame(() => {
+      if (!this._playing) return;
+      const now = performance.now(), t = (now - this._t0) % 8000;
+      this._sigs.time = { ms: t, s: t/1000, norm: t/8000 };
+      const state = this.renderFrame(t, this._sigs);
+      if (this._onFrame) this._onFrame(state, t);
+      this._fcount++;
+      if (now - this._lastFps >= 1000) { this._fps = this._fcount; this._fcount = 0; this._lastFps = now; }
+      this._loop();
+    });
+  }
+  destroy() { this._playing = false; cancelAnimationFrame(this._raf); this.canvas.removeEventListener('mousemove', this._mm); }
+}
+
+// ============================================================================
+// Initial spec
+// ============================================================================
+const INITIAL_SPEC = {
+  metadata: { width: 960, height: 540, background: '#0d0d14', duration: 8000 },
+  elements: [
+    { id: 'bg', type: 'rectangle', x: 0, y: 0, width: 960, height: 540, fill: '#0d0d14' },
+    { id: 'title', type: 'text_box', x: 60, y: 60, width: 460, height: 70,
+      content: 'SpatialFlow', font: 'bold 42px DM Sans', color: '#e8e8f8' },
+    { id: 'subtitle', type: 'text_box', x: 60, y: 148, width: 460, height: 36,
+      content: 'Reactive constraint layout for intelligent agents',
+      font: '15px DM Sans', color: '#5a5a8a' },
+    { id: 'accent', type: 'rectangle', x: 60, y: 196, width: 180, height: 3, fill: '#7eb8ff' },
+    { id: 'hero_box', type: 'rectangle', x: 620, y: 70, width: 280, height: 220,
+      fill: '#111119', stroke: '#1c1c2e', stroke_width: 1 },
+    { id: 'dot', type: 'circle', x: 760, y: 180, radius: 38, fill: '#7eb8ff' },
+    { id: 'hero_label', type: 'text', x: 620, y: 316,
+      content: 'hero element', font: '11px JetBrains Mono', color: '#3a3a5a' },
+    { id: 'side_tag', type: 'rectangle', x: 530, y: 168, width: 72, height: 20,
+      fill: 'rgba(247,183,49,.12)', stroke: 'rgba(247,183,49,.3)', stroke_width: 1 },
+    { id: 'side_tag_label', type: 'text', x: 535, y: 182,
+      content: '← left side', font: '9px JetBrains Mono', color: '#f7b731' },
+  ],
+  constraints: [],
+  animations: []
+};
+
+// ============================================================================
+// Intent System
+// ============================================================================
+const INTENT_SYSTEM_PROMPT = `You are a SpatialFlow semantic constraint compiler.
+
+Compile a natural language spatial relationship into reactive constraint expressions.
+
+ELEMENT REFS (use measured values, not hardcoded positions):
+{id}.x, {id}.y, {id}.width, {id}.height
+{id}.bounds.left, {id}.bounds.right, {id}.bounds.top, {id}.bounds.bottom
+{id}.centerX, {id}.centerY
+{id}.actualWidth  ← actual rendered text width (for text/text_box elements)
+slide.width=960, slide.height=540, slide.centerX=480, slide.centerY=270
+Signals: mouse.x, mouse.y, time.ms, time.norm
+
+MATH: sin, cos, clamp(x,min,max), lerp(a,b,t), abs, min, max, sqrt
+
+Classify the intent as one of:
+- "reactive"     — a single expression that re-evaluates every frame, never goes stale
+- "directional"  — depends on current layout direction/side (may go stale if layout shifts)
+- "measure"      — driven by actual rendered measurements (text width, content height)
+
+Output ONLY this JSON array (zero prose, zero fences):
+[
+  {
+    "target": "element_id",
+    "prop": "x|y|width|height",
+    "expr": "constraint expression",
+    "explanation": "one line: what this constraint does",
+    "type": "reactive|directional|measure",
+    "deps": ["element_ids", "referenced", "in", "expr"]
+  }
+]
+
+EXAMPLES:
+
+Intent: "subtitle always 16px below title's bottom edge"
+→ [{"target":"subtitle","prop":"y","expr":"title.bounds.bottom + 16","explanation":"subtitle top locked 16px below title bottom","type":"reactive","deps":["title"]}]
+
+Intent: "dot centered inside hero box"
+→ [{"target":"dot","prop":"x","expr":"hero_box.centerX","explanation":"dot x at hero box center","type":"reactive","deps":["hero_box"]},{"target":"dot","prop":"y","expr":"hero_box.centerY","explanation":"dot y at hero box center","type":"reactive","deps":["hero_box"]}]
+
+Intent: "accent bar same width as title's actual rendered text"
+→ [{"target":"accent","prop":"width","expr":"title.actualWidth","explanation":"accent width tracks title's rendered text width","type":"measure","deps":["title"]}]
+
+Intent: "label on whichever side of hero_box has more horizontal space" (hero_box at x=620, slide.width=960):
+→ [{"target":"hero_label","prop":"x","expr":"hero_box.bounds.left - 90","explanation":"left side has more space (620px vs 280px) — label appears to the left","type":"directional","deps":["hero_box"]}]`;
+
+// Intent registry: { id, natural, compiled:[], type, stale, staleDeps }
+const intents = [];
+let intentIdCounter = 0;
+const highlights = {}; // elementId -> { frames }
+
+function flashElements(ids, frames = 120) {
+  ids.forEach(id => { highlights[id] = { frames }; });
+}
+
+function getSpecContext(engine) {
+  const m = engine.evaluate(0, {}).measurements;
+  return engine.spec.elements.map(el => {
+    const em = m[el.id] || {};
+    return {
+      id: el.id, type: el.type,
+      x: Math.round(em.x || 0), y: Math.round(em.y || 0),
+      width: Math.round(em.width || 0), height: Math.round(em.height || 0),
+      bounds: em.bounds ? {
+        left: Math.round(em.bounds.left), right: Math.round(em.bounds.right),
+        top: Math.round(em.bounds.top), bottom: Math.round(em.bounds.bottom)
+      } : undefined,
+      centerX: Math.round(em.centerX || 0), centerY: Math.round(em.centerY || 0),
+      actualWidth: Math.round(em.actualWidth || em.width || 0)
+    };
+  });
+}
+
+// Check if new compiled constraints clash with existing intent constraints
+function detectConflicts(newCompiled, skipIntentId = null) {
+  const found = []; // { newConstraint, existingIntent, prop }
+  for (const nc of newCompiled) {
+    for (const intent of intents) {
+      if (intent.id === skipIntentId) continue;
+      for (const ec of intent.compiled) {
+        if (ec.target === nc.target && ec.prop === nc.prop) {
+          found.push({ newConstraint: nc, existingIntent: intent, prop: nc.prop });
+        }
+      }
+    }
+  }
+  return found;
+}
+
+// Mark all intents that are in conflict with any other intent
+function refreshConflictState() {
+  // Build a map of target.prop → [intentIds]
+  const propOwners = {};
+  for (const intent of intents) {
+    for (const c of intent.compiled) {
+      const key = `${c.target}.${c.prop}`;
+      if (!propOwners[key]) propOwners[key] = [];
+      propOwners[key].push(intent.id);
+    }
+  }
+  // Mark intents as conflicted if any prop has >1 owner
+  for (const intent of intents) {
+    const conflictsWith = [];
+    for (const c of intent.compiled) {
+      const key = `${c.target}.${c.prop}`;
+      const owners = propOwners[key] || [];
+      owners.filter(id => id !== intent.id).forEach(id => {
+        if (!conflictsWith.includes(id)) conflictsWith.push(id);
+      });
+    }
+    intent.conflictsWith = conflictsWith; // array of conflicting intent IDs
+  }
+}
+
+async function compileIntent(natural, apiKey, intentId = null) {
+  const ctx = getSpecContext(live);
+  const userMsg = `Current elements:\n${JSON.stringify(ctx, null, 2)}\n\nIntent: "${natural}"`;
+
+  setStatus('compiling');
+  log(`Compiling: "${natural}"`);
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 800,
+      system: INTENT_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMsg }]
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    setStatus('live');
+    log(`ERROR: ${err.error?.message || 'API error'}`);
+    return null;
+  }
+
+  const data = await res.json();
+  const rawText = data.content?.[0]?.text || '[]';
+  log(`Raw: ${rawText.slice(0, 200)}`);
+
+  let compiled;
+  try {
+    const start = rawText.indexOf('['), end = rawText.lastIndexOf(']');
+    compiled = JSON.parse(rawText.slice(start, end + 1));
+  } catch (e) {
+    setStatus('live');
+    log(`Parse error: ${e.message}`);
+    return null;
+  }
+
+  // Detect conflicts before applying
+  const conflicts = detectConflicts(compiled, intentId);
+  if (conflicts.length > 0) {
+    conflicts.forEach(cf => {
+      log(`⚠ CONFLICT: "${natural.slice(0,30)}…" vs "${cf.existingIntent.natural.slice(0,30)}…" — both set ${cf.newConstraint.target}.${cf.prop}`);
+    });
+  }
+
+  // Apply constraints to engine
+  const allDeps = new Set();
+  const allTargets = [];
+  for (const c of compiled) {
+    live.executeCommand({ type: 'add_constraint', constraint: { target: c.target, [c.prop]: c.expr } });
+    (c.deps || []).forEach(d => allDeps.add(d));
+    allTargets.push(c.target);
+  }
+
+  flashElements(allTargets);
+  setStatus('live');
+
+  // Determine intent type (use first entry's type as representative)
+  const intentType = compiled[0]?.type || 'reactive';
+
+  const intent = {
+    id: intentId || `intent_${++intentIdCounter}`,
+    natural,
+    compiled,
+    type: intentType,
+    stale: false,
+    deps: Array.from(allDeps)
+  };
+
+  if (intentId) {
+    const idx = intents.findIndex(i => i.id === intentId);
+    if (idx >= 0) intents[idx] = intent;
+  } else {
+    intents.push(intent);
+  }
+
+  log(`✓ Compiled ${compiled.length} constraint(s) — type: ${intentType} — deps: [${intent.deps.join(', ')}]`);
+  refreshConflictState();
+  renderRegistry();
+  return intent;
+}
+
+function removeIntent(intentId) {
+  const idx = intents.findIndex(i => i.id === intentId);
+  if (idx < 0) return;
+  const intent = intents[idx];
+  // Remove constraints for all targets in this intent
+  intent.compiled.forEach(c => {
+    live.executeCommand({ type: 'remove_constraint', elementId: c.target });
+  });
+  intents.splice(idx, 1);
+  refreshConflictState();
+  renderRegistry();
+  log(`Removed intent: "${intent.natural.slice(0, 40)}"`);
+}
+
+function markStaleForElement(elementId) {
+  let anyStale = false;
+  for (const intent of intents) {
+    if (intent.type === 'directional' && intent.deps.includes(elementId)) {
+      intent.stale = true;
+      anyStale = true;
+      log(`⚠ "${intent.natural.slice(0, 40)}…" may be stale — dep "${elementId}" changed`);
+    }
+  }
+  if (anyStale) renderRegistry();
+}
+
+// ============================================================================
+// Registry UI
+// ============================================================================
+const TYPE_COLORS = { reactive: 'var(--ok)', directional: 'var(--gold)', measure: 'var(--accent2)' };
+const TYPE_BG = { reactive: 'rgba(80,232,144,.1)', directional: 'rgba(247,183,49,.1)', measure: 'rgba(78,205,196,.1)' };
+
+function renderRegistry() {
+  const box = document.getElementById('intentRegistry');
+  document.getElementById('intentCount').textContent = `${intents.length} intent${intents.length !== 1 ? 's' : ''}`;
+  document.getElementById('constraintCount').textContent =
+    `${live.spec.constraints?.length ?? 0} constraints`;
+
+  if (intents.length === 0) {
+    box.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--dim);padding:8px 0;">No intents yet.</div>';
+    return;
+  }
+
+  box.innerHTML = intents.map(intent => {
+    const hasConflict = intent.conflictsWith?.length > 0;
+    const statusClass = hasConflict ? 'conflict' : intent.stale ? 'stale' : 'active';
+    const cardClass   = hasConflict ? 'conflict' : intent.stale ? 'stale' : 'active';
+    const typeColor = TYPE_COLORS[intent.type] || 'var(--dim)';
+    const typeBg    = TYPE_BG[intent.type]    || 'rgba(255,255,255,.05)';
+
+    const exprLines = intent.compiled.map(c => {
+      const isConflicted = intent.conflictsWith?.length > 0 &&
+        intents.filter(i => i.id !== intent.id)
+               .some(i => i.compiled.some(ec => ec.target === c.target && ec.prop === c.prop));
+      return `<div><span style="color:var(--dim)">${c.target}.${c.prop}</span> = <span class="ic-expr" style="${isConflicted ? 'color:var(--warn);text-decoration:line-through;' : ''}">${c.expr}</span></div>`;
+    }).join('');
+    const explainLines = intent.compiled.map(c =>
+      `<div class="ic-explain">${c.explanation}</div>`
+    ).join('');
+
+    const conflictNames = (intent.conflictsWith || [])
+      .map(cid => intents.find(i => i.id === cid)?.natural.slice(0, 35) + '…')
+      .filter(Boolean);
+    const conflictBanner = hasConflict
+      ? `<div class="conflict-banner">⚠ conflicts with: ${conflictNames.join(' · ')}</div>`
+      : '';
+
+    return `
+    <div class="intent-card ${cardClass}" id="ic-${intent.id}">
+      <div class="ic-header">
+        <div class="ic-status ${statusClass}"></div>
+        <div class="ic-natural" style="font-size:10px">${intent.natural}</div>
+        <span class="ic-type" style="background:${typeBg};color:${typeColor}">${intent.type}</span>
+      </div>
+      <div class="ic-body">
+        ${exprLines}
+        ${explainLines}
+        <div style="margin-top:4px">
+          <span class="ic-dep">deps: [${intent.deps.join(', ')}]</span>
+        </div>
+        <div class="ic-actions">
+          ${intent.type === 'directional' || intent.stale ? `<button class="ic-btn recompile" onclick="recompileIntent('${intent.id}')">⟳ re-compile</button>` : ''}
+          <button class="ic-btn remove" onclick="removeIntent('${intent.id}')">✕ remove</button>
+        </div>
+      </div>
+      ${conflictBanner}
+    </div>`;
+  }).join('');
+}
+
+async function recompileIntent(intentId) {
+  const intent = intents.find(i => i.id === intentId);
+  if (!intent) return;
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) return;
+
+  // Mark as compiling in UI
+  const card = document.getElementById(`ic-${intentId}`);
+  if (card) {
+    const dot = card.querySelector('.ic-status');
+    if (dot) { dot.className = 'ic-status compiling'; }
+  }
+
+  log(`Re-compiling: "${intent.natural.slice(0, 50)}"`);
+
+  // Remove old constraints first
+  intent.compiled.forEach(c => {
+    live.executeCommand({ type: 'remove_constraint', elementId: c.target });
+  });
+
+  await compileIntent(intent.natural, apiKey, intentId);
+
+  // Clear stale flag
+  const updated = intents.find(i => i.id === intentId);
+  if (updated) updated.stale = false;
+  renderRegistry();
+}
+
+// ============================================================================
+// Stress tests
+// ============================================================================
+const INITIAL_ELEMENTS = JSON.parse(JSON.stringify(INITIAL_SPEC.elements));
+
+function stressGrowTitle() {
+  live.executeCommand({
+    type: 'update_element', elementId: 'title',
+    props: { content: 'SpatialFlow:\nReactive Constraints\nfor Intelligent Agents', height: 160 }
+  });
+  flashElements(['title']);
+  markStaleForElement('title');
+  log('Stress: grew title to 3 lines');
+}
+
+function stressShrinkTitle() {
+  live.executeCommand({
+    type: 'update_element', elementId: 'title',
+    props: { content: 'SpatialFlow', height: 70 }
+  });
+  flashElements(['title']);
+  markStaleForElement('title');
+  log('Stress: shrunk title to 1 line');
+}
+
+function stressHeroLeft() {
+  live.executeCommand({ type: 'update_element', elementId: 'hero_box', props: { x: 60 } });
+  live.executeCommand({ type: 'update_element', elementId: 'dot',      props: { x: 200 } });
+  live.executeCommand({ type: 'update_element', elementId: 'side_tag', props: { x: 360 } });
+  live.executeCommand({ type: 'update_element', elementId: 'side_tag_label', props: { x: 365, content: 'right side →' } });
+  flashElements(['hero_box', 'dot', 'side_tag', 'side_tag_label']);
+  markStaleForElement('hero_box');
+  log('Stress: hero box → LEFT (x=60) — right side now has more space — directional intents stale');
+}
+
+function stressHeroRight() {
+  live.executeCommand({ type: 'update_element', elementId: 'hero_box', props: { x: 620 } });
+  live.executeCommand({ type: 'update_element', elementId: 'dot',      props: { x: 760 } });
+  live.executeCommand({ type: 'update_element', elementId: 'side_tag', props: { x: 530 } });
+  live.executeCommand({ type: 'update_element', elementId: 'side_tag_label', props: { x: 535, content: '← left side' } });
+  flashElements(['hero_box', 'dot', 'side_tag', 'side_tag_label']);
+  markStaleForElement('hero_box');
+  log('Stress: hero box → RIGHT (x=620) — left side now has more space — directional intents stale');
+}
+
+function stressReset() {
+  // Restore initial element positions
+  for (const el of INITIAL_ELEMENTS) {
+    live.executeCommand({ type: 'update_element', elementId: el.id, props: el });
+  }
+  // Remove all constraints
+  live.spec.constraints = [];
+  // Clear intents
+  intents.length = 0;
+  renderRegistry();
+  flashElements(INITIAL_ELEMENTS.map(e => e.id));
+  log('Reset: all elements restored, intents cleared');
+}
+
+// ============================================================================
+// Canvas + rendering
+// ============================================================================
+const canvas = document.getElementById('c');
+const stage  = document.getElementById('canvasStage');
+
+function fitCanvas() {
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const scale = Math.min(sw / 960, sh / 540, 1);
+  canvas.style.width  = (960 * scale) + 'px';
+  canvas.style.height = (540 * scale) + 'px';
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
+new ResizeObserver(fitCanvas).observe(stage);
+
+let live = new SpatialFlowLive(JSON.parse(JSON.stringify(INITIAL_SPEC)), canvas);
+let frameN = 0;
+
+live.start((state) => {
+  frameN++;
+
+  // Highlight overlay
+  const ctx = live.ctx;
+  for (const [id, h] of Object.entries(highlights)) {
+    if (h.frames <= 0) { delete highlights[id]; continue; }
+    const m = state.measurements[id];
+    if (m?.bounds) {
+      const alpha = Math.min(h.frames / 60, 1);
+      const b = m.bounds;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#c084fc';
+      ctx.shadowBlur = 16 * alpha;
+      ctx.strokeRect(b.left - 6, b.top - 6, (b.right - b.left) + 12, (b.bottom - b.top) + 12);
+      ctx.font = '9px JetBrains Mono';
+      ctx.fillStyle = `rgba(192,132,252,${alpha})`;
+      ctx.shadowBlur = 0;
+      ctx.fillText(id, b.left - 6, b.top - 10);
+      ctx.restore();
+    }
+    h.frames--;
+  }
+
+  if (frameN % 60 === 0 && live._fps > 0) {
+    document.getElementById('fpsEl').textContent = `${live._fps} fps`;
+  }
+  if (frameN % 20 === 0) {
+    document.getElementById('constraintCount').textContent = `${state.constraints?.length ?? 0} constraints`;
+  }
+});
+
+function setStatus(s) {
+  const b = document.getElementById('statusBadge');
+  if (s === 'compiling') { b.textContent = '◈ COMPILING'; b.className = 'badge compiling'; }
+  else { b.textContent = '● LIVE'; b.className = 'badge live'; }
+}
+
+function log(msg) {
+  const box = document.getElementById('compilerLog');
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  box.textContent = `[${ts}] ${msg}\n` + box.textContent.split('\n').slice(0, 30).join('\n');
+}
+
+// ============================================================================
+// UI wiring
+// ============================================================================
+document.getElementById('compileBtn').addEventListener('click', async () => {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const natural = document.getElementById('intentInput').value.trim();
+  if (!apiKey) { document.getElementById('keyStatus').textContent = 'API key required'; return; }
+  if (!natural) return;
+  document.getElementById('compileBtn').disabled = true;
+  document.getElementById('intentInput').value = '';
+  await compileIntent(natural, apiKey);
+  document.getElementById('compileBtn').disabled = false;
+});
+
+document.getElementById('intentInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) document.getElementById('compileBtn').click();
+});
+
+document.querySelectorAll('.example').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('intentInput').value = btn.dataset.intent;
+  });
+});
+
+document.getElementById('growTitle').addEventListener('click', stressGrowTitle);
+document.getElementById('shrinkTitle').addEventListener('click', stressShrinkTitle);
+document.getElementById('heroLeft').addEventListener('click', stressHeroLeft);
+document.getElementById('heroRight').addEventListener('click', stressHeroRight);
+document.getElementById('resetBtn').addEventListener('click', stressReset);
+
+// API key persistence
+const savedKey = localStorage.getItem('sf_api_key');
+if (savedKey) {
+  document.getElementById('apiKey').value = savedKey;
+  document.getElementById('keyStatus').textContent = '● key loaded';
+  document.getElementById('keyStatus').className = 'key-status ok';
+}
+document.getElementById('apiKey').addEventListener('change', () => {
+  localStorage.setItem('sf_api_key', document.getElementById('apiKey').value);
+  document.getElementById('keyStatus').textContent = '● key saved';
+  document.getElementById('keyStatus').className = 'key-status ok';
+});
+
+renderRegistry();
+</script>
+</body>
+</html>

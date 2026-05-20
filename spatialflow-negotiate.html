@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>SpatialFlow — Agent Negotiation</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0d14; --panel:#111119; --border:#1c1c2e; --surface:#16162a;
+    --text:#c8c8d8; --dim:#4a4a6a; --accent:#7eb8ff; --accent2:#4ecdc4;
+    --warn:#ff6b6b; --ok:#50e890; --gold:#f7b731;
+    --mono:'JetBrains Mono',monospace; --sans:'DM Sans',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);
+       height:100vh;display:grid;grid-template-columns:280px 1fr 360px;overflow:hidden;}
+
+  .panel{background:var(--panel);border-right:1px solid var(--border);
+          padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
+  .panel.right{border-right:none;border-left:1px solid var(--border);}
+
+  .ph{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;
+      text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px;}
+  .ph::before{content:'';width:3px;height:12px;background:var(--accent);border-radius:2px;}
+
+  .section{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;}
+
+  /* API key */
+  .key-input{width:100%;font-family:var(--mono);font-size:11px;background:var(--bg);
+             border:1px solid var(--border);color:var(--text);padding:7px 10px;
+             border-radius:4px;outline:none;}
+  .key-input:focus{border-color:var(--accent);}
+  .key-status{font-family:var(--mono);font-size:10px;margin-top:4px;}
+  .key-status.ok{color:var(--ok);}
+  .key-status.err{color:var(--warn);}
+
+  /* Chat input */
+  .chat-area{display:flex;flex-direction:column;gap:6px;flex:1;}
+  .chat-input{width:100%;font-family:var(--sans);font-size:13px;background:var(--surface);
+              border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;
+              outline:none;resize:none;min-height:80px;line-height:1.5;}
+  .chat-input:focus{border-color:var(--accent);}
+  .send-btn{font-family:var(--mono);font-size:11px;padding:9px 16px;
+            background:rgba(126,184,255,.12);border:1px solid rgba(126,184,255,.35);
+            color:var(--accent);border-radius:4px;cursor:pointer;transition:all .15s;align-self:flex-end;}
+  .send-btn:hover{background:rgba(126,184,255,.22);}
+  .send-btn:disabled{opacity:.4;cursor:default;}
+
+  /* Example prompts */
+  .example{font-family:var(--mono);font-size:10px;padding:5px 8px;background:var(--bg);
+            border:1px solid var(--border);color:var(--dim);border-radius:3px;
+            cursor:pointer;transition:all .15s;text-align:left;width:100%;}
+  .example:hover{color:var(--accent);border-color:var(--accent);}
+
+  /* History */
+  .hist-item{font-family:var(--mono);font-size:10px;padding:5px 8px;background:var(--bg);
+              border-left:2px solid var(--border);color:var(--dim);border-radius:0 3px 3px 0;
+              cursor:pointer;}
+  .hist-item:hover{color:var(--text);}
+
+  /* Canvas */
+  .canvas-wrap{display:flex;flex-direction:column;background:#08080f;overflow:hidden;}
+  .toolbar{display:flex;align-items:center;gap:8px;padding:8px 14px;flex-shrink:0;
+           background:var(--panel);border-bottom:1px solid var(--border);
+           font-family:var(--mono);font-size:10px;color:var(--dim);}
+  .badge{background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:3px;font-size:9px;}
+  .badge.live{color:var(--ok);border-color:rgba(80,232,144,.3);}
+  .badge.negotiating{color:var(--gold);border-color:rgba(247,183,49,.3);animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .canvas-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;
+                background:repeating-linear-gradient(
+                  45deg,transparent,transparent 10px,rgba(255,255,255,.01) 10px,rgba(255,255,255,.01) 20px);}
+  canvas{display:block;cursor:crosshair;transform-origin:center center;
+         box-shadow:0 0 0 1px #2a2a4a, 0 8px 40px rgba(0,0,0,.6);}
+
+  /* Negotiation log */
+  .neg-log{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;}
+
+  .round{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .round-header{padding:6px 10px;font-family:var(--mono);font-size:10px;font-weight:700;
+                letter-spacing:.06em;display:flex;align-items:center;gap:6px;}
+  .round-header.user{background:rgba(126,184,255,.06);color:var(--accent);}
+  .round-header.agent{background:rgba(78,205,196,.06);color:var(--accent2);}
+  .round-header.engine{background:rgba(80,232,144,.06);color:var(--ok);}
+  .round-header.warn{background:rgba(255,107,107,.06);color:var(--warn);}
+  .round-body{padding:8px 10px;font-family:var(--mono);font-size:10px;color:var(--dim);
+               line-height:1.7;white-space:pre-wrap;word-break:break-all;
+               background:rgba(0,0,0,.2);}
+
+  .cmd-chip{display:inline-block;background:rgba(126,184,255,.08);border:1px solid rgba(126,184,255,.2);
+            color:var(--accent);padding:1px 6px;border-radius:3px;font-size:9px;margin:1px;}
+  .ok-chip{color:var(--ok);}
+  .warn-chip{color:var(--warn);}
+  .gold-chip{color:var(--gold);}
+
+  /* Spec inspector */
+  .spec-box{font-family:var(--mono);font-size:9px;color:var(--dim);
+             background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;
+             padding:6px;max-height:160px;overflow-y:auto;white-space:pre;line-height:1.6;}
+
+  ::-webkit-scrollbar{width:3px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- LEFT PANEL -->
+<div class="panel">
+  <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text)">
+    Spatial<span style="color:var(--accent)">Flow</span>
+    <span style="font-size:10px;color:var(--dim);margin-left:6px">Agent Negotiation</span>
+  </div>
+
+  <div class="ph">API Key</div>
+  <div class="section" style="gap:6px;display:flex;flex-direction:column;">
+    <input class="key-input" id="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off"/>
+    <div class="key-status" id="keyStatus">Enter Anthropic API key</div>
+  </div>
+
+  <div class="ph">Instruction</div>
+  <div class="chat-area">
+    <textarea class="chat-input" id="chatInput" placeholder="e.g. Center the title horizontally on the slide&#10;e.g. Make the dot follow the mouse&#10;e.g. Add a label below the hero box"></textarea>
+    <button class="send-btn" id="sendBtn">Negotiate ▶</button>
+  </div>
+
+  <div class="ph">Examples</div>
+  <div style="display:flex;flex-direction:column;gap:4px;">
+    <button class="example" data-prompt="Center the title horizontally on the slide">Center title horizontally</button>
+    <button class="example" data-prompt="Make the dot follow the mouse cursor">Dot follows mouse</button>
+    <button class="example" data-prompt="Position the subtitle directly below the title's bottom edge with 12px gap">Subtitle below title</button>
+    <button class="example" data-prompt="Add a glowing accent bar below the title that spans the full title width">Add accent bar below title</button>
+    <button class="example" data-prompt="Animate the dot's radius from 34 to 60 over 1.5 seconds then back">Pulse dot radius</button>
+    <button class="example" data-prompt="Add a footer label at the bottom center of the slide">Add footer label</button>
+  </div>
+
+  <div class="ph">History</div>
+  <div id="histBox" style="display:flex;flex-direction:column;gap:3px;"></div>
+</div>
+
+<!-- CENTER CANVAS -->
+<div class="canvas-wrap">
+  <div class="toolbar">
+    <span>SpatialFlow v2</span>
+    <span class="badge live" id="statusBadge">● LIVE</span>
+    <span id="elemCount" class="badge">— el</span>
+    <span id="constraintCount" class="badge">— constraints</span>
+    <span style="margin-left:auto;font-size:9px;" id="fpsEl">— fps</span>
+  </div>
+  <div class="canvas-stage" id="canvasStage">
+    <canvas id="c" width="960" height="540"></canvas>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel right">
+  <div class="ph">Negotiation Log</div>
+  <div class="neg-log" id="negLog">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dim);padding:8px;">
+      Enter an instruction and hit Negotiate to start.
+    </div>
+  </div>
+
+  <div class="ph" style="margin-top:4px;flex-shrink:0;">Raw Agent Output</div>
+  <div class="spec-box" id="rawOutput" style="max-height:180px;color:var(--accent2);">—</div>
+
+  <div class="ph" style="flex-shrink:0;">Live Spec</div>
+  <div class="spec-box" id="specBox">—</div>
+</div>
+
+<script src="spatialflow-engine.js"></script>
+<script>
+// ============================================================================
+// SpatialFlowLive (from Phase 1)
+// ============================================================================
+class SpatialFlowLive extends SpatialFlowEngine {
+  constructor(spec, canvas) {
+    super(spec, canvas);
+    this._sigs = { mouse: { x: 480, y: 270 }, time: { ms: 0, s: 0, norm: 0 } };
+    this._raf = null; this._playing = false; this._t0 = null; this._pausedAt = 0;
+    this._fps = 0; this._fcount = 0; this._lastFps = 0; this._onFrame = null;
+    const c = canvas;
+    this._mm = (e) => {
+      const r = c.getBoundingClientRect();
+      // Map screen coords → canvas internal coords (accounts for CSS scaling)
+      this._sigs.mouse = {
+        x: (e.clientX - r.left) * (960 / r.width),
+        y: (e.clientY - r.top)  * (540 / r.height)
+      };
+    };
+    c.addEventListener('mousemove', this._mm);
+  }
+  start(cb) {
+    if (this._playing) return;
+    this._playing = true; this._t0 = performance.now() - this._pausedAt; this._onFrame = cb;
+    this._loop();
+  }
+  _loop() {
+    this._raf = requestAnimationFrame(() => {
+      if (!this._playing) return;
+      const now = performance.now(), elapsed = now - this._t0;
+      const dur = this.spec.metadata?.duration || 8000;
+      const t = Math.min(elapsed, dur - 1); // play once, hold final frame
+      this._sigs.time = { ms: t, s: t/1000, norm: t/dur };
+      const state = this.renderFrame(t, this._sigs);
+      if (this._onFrame) this._onFrame(state, t);
+      this._fcount++;
+      if (now - this._lastFps >= 1000) { this._fps = this._fcount; this._fcount = 0; this._lastFps = now; }
+      this._loop();
+    });
+  }
+  destroy() {
+    this._playing = false; cancelAnimationFrame(this._raf);
+    this.canvas.removeEventListener('mousemove', this._mm);
+  }
+}
+
+// ============================================================================
+// Starting spec — a real slide with elements to work with
+// ============================================================================
+const INITIAL_SPEC = {
+  metadata: { width: 960, height: 540, background: '#0d0d14', duration: 8000 },
+  elements: [
+    { id: 'bg', type: 'rectangle', x: 0, y: 0, width: 960, height: 540, fill: '#0d0d14' },
+    { id: 'title', type: 'text_box', x: 80, y: 80, width: 500, height: 60,
+      content: 'SpatialFlow', font: 'bold 42px DM Sans', color: '#e8e8f8' },
+    { id: 'subtitle', type: 'text_box', x: 80, y: 160, width: 520, height: 40,
+      content: 'Reactive constraint layout for intelligent agents',
+      font: '16px DM Sans', color: '#5a5a8a' },
+    { id: 'hero_box', type: 'rectangle', x: 620, y: 100, width: 260, height: 200,
+      fill: '#111119', stroke: '#1c1c2e', stroke_width: 1 },
+    { id: 'dot', type: 'circle', x: 750, y: 200, radius: 34, fill: '#7eb8ff' },
+    { id: 'hero_label', type: 'text', x: 680, y: 330,
+      content: 'hero element', font: '11px JetBrains Mono', color: '#3a3a5a' },
+  ],
+  constraints: [],
+  animations: []
+};
+
+// ============================================================================
+// System prompt for Claude
+// ============================================================================
+const SYSTEM_PROMPT = `You are an agent controlling a SpatialFlow reactive layout engine for a 960×540 slide canvas.
+
+ELEMENTS in the current spec will be provided. You output commands to fulfill the user's instruction.
+
+CONSTRAINT EXPRESSIONS reference element measurements or signals:
+- Element: {id}.x, {id}.y, {id}.width, {id}.height, {id}.bounds.left/right/top/bottom, {id}.centerX, {id}.centerY
+- Slide surface (always available): slide.width, slide.height, slide.centerX, slide.centerY, slide.bounds.right/bottom
+- Signals: mouse.x, mouse.y, time.ms, time.s, time.norm (0–1)
+- Math: sin(x), cos(x), sqrt(x), clamp(x,min,max), lerp(a,b,t), abs(x), min(a,b), max(a,b)
+
+COMMANDS — output ONLY a raw JSON array, no prose, no markdown fences:
+[
+  {"type":"add_element","element":{"id":"…","type":"rectangle|circle|text|text_box","x":0,"y":0,"width":100,"height":40,"fill":"#hex","content":"…","font":"14px DM Sans","color":"#hex","radius":20}},
+  {"type":"remove_element","elementId":"…"},
+  {"type":"update_element","elementId":"…","props":{"fill":"#hex","content":"…"}},
+  {"type":"add_constraint","constraint":{"target":"…","x":"expr","y":"expr","width":"expr","height":"expr"}},
+  {"type":"remove_constraint","elementId":"…"},
+  {"type":"add_animation","animation":{"target":"…","property":"x|y|width|height","keyframes":[{"time":0,"value":0},{"time":4000,"value":1}],"easing":"ease_out|ease_in_out|linear"}}
+]
+
+RULES:
+- Output ONLY a raw JSON array. Zero prose before or after. No markdown. No explanation. Just [...].
+- Do NOT remove or modify the "bg" element.
+- "bg" overlapping other elements is NOT a violation — it is the background. Ignore all bg overlaps.
+- When fulfilling an instruction, ONLY modify elements directly mentioned or required. Do NOT reposition other existing elements to resolve overlaps — overlapping elements are an acceptable layout outcome.
+- Only retry if an element goes OUTSIDE the 960×540 slide bounds (overflow). Overlaps between elements are NOT errors to fix.
+- "slide" is a virtual element always available (960×540). Use slide.centerX = 480, slide.centerY = 270.
+- add_constraint merges into existing constraints for the same target — no need to remove first unless replacing completely.
+- For centering horizontally: x = "slide.centerX - element_id.bounds.width / 2" but note bounds.width = element width. Use: x = "slide.width / 2 - 250" (half element width estimate) or use the element's defined width.
+- If asked to make something follow the mouse, use constraint with x: "mouse.x - radius" or similar.
+- Animations use keyframes with time in milliseconds (0 to duration).`;
+
+// ============================================================================
+// Negotiation engine
+// ============================================================================
+async function negotiate(instruction, engine, apiKey, onLog) {
+  const MAX_ROUNDS = 3;
+  const messages = [];
+  const history = [];
+
+  function specSummary(spec) {
+    return {
+      elements: spec.elements.map(e => ({
+        id: e.id, type: e.type,
+        x: e.x, y: e.y, width: e.width, height: e.height,
+        ...(e.content ? { content: e.content.slice(0, 40) } : {}),
+        ...(e.radius ? { radius: e.radius } : {})
+      })),
+      constraints: spec.constraints || [],
+      animations: (spec.animations || []).map(a => ({ target: a.target, property: a.property }))
+    };
+  }
+
+  // Initial user message
+  const initialMsg = `Current spec:\n${JSON.stringify(specSummary(engine.spec), null, 2)}\n\nInstruction: "${instruction}"`;
+  messages.push({ role: 'user', content: initialMsg });
+  onLog({ type: 'user', text: instruction });
+
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    onLog({ type: 'thinking', round: round + 1 });
+
+    // Call Claude
+    let rawText;
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: SYSTEM_PROMPT,
+          messages
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      rawText = data.content?.[0]?.text || '[]';
+      // Show raw output immediately for debugging
+      document.getElementById('rawOutput').textContent = rawText;
+    } catch (e) {
+      onLog({ type: 'error', text: e.message });
+      document.getElementById('rawOutput').textContent = 'API error: ' + e.message;
+      return;
+    }
+
+    // Parse commands — extract first JSON array even if Claude adds prose
+    let commands;
+    try {
+      const start = rawText.indexOf('[');
+      const end   = rawText.lastIndexOf(']');
+      if (start === -1 || end === -1) throw new Error('No JSON array found in response');
+      const cleaned = rawText.slice(start, end + 1);
+      commands = JSON.parse(cleaned);
+      if (!Array.isArray(commands)) commands = [commands];
+    } catch (e) {
+      onLog({ type: 'error', text: `Parse error: ${e.message}\n\nRaw response:\n${rawText}` });
+      document.getElementById('rawOutput').textContent = `PARSE ERROR: ${e.message}\n\n${rawText}`;
+      return;
+    }
+
+    messages.push({ role: 'assistant', content: rawText });
+    onLog({ type: 'agent', round: round + 1, commands });
+
+    // Capture pre-command measurements for delta reporting
+    const preMeasure = engine.evaluate(0, {}).measurements;
+
+    // Execute commands
+    const results = commands.map(cmd => engine.executeCommand(cmd));
+
+    // Capture post-command measurements and compute deltas
+    const postMeasure = engine.evaluate(0, {}).measurements;
+    const modifiedIds = commands
+      .map(c => c.constraint?.target || c.elementId || c.element?.id)
+      .filter(Boolean);
+    const deltas = {};
+    for (const id of modifiedIds) {
+      const pre = preMeasure[id], post = postMeasure[id];
+      if (!pre || !post) continue;
+      const d = {};
+      if (Math.abs((pre.x||0) - (post.x||0)) > 0.5)      d.x      = `${Math.round(pre.x||0)} → ${Math.round(post.x||0)}`;
+      if (Math.abs((pre.y||0) - (post.y||0)) > 0.5)      d.y      = `${Math.round(pre.y||0)} → ${Math.round(post.y||0)}`;
+      if (Math.abs((pre.width||0) - (post.width||0)) > 0.5) d.width = `${Math.round(pre.width||0)} → ${Math.round(post.width||0)}`;
+      if (Math.abs((pre.height||0) - (post.height||0)) > 0.5) d.height = `${Math.round(pre.height||0)} → ${Math.round(post.height||0)}`;
+      if (Object.keys(d).length > 0) deltas[id] = d;
+    }
+
+    // Flash modified elements on canvas
+    if (typeof flashElements !== 'undefined') flashElements(modifiedIds);
+
+    // Only overflow violations trigger correction — overlaps are intentional design
+    const allViolations = results.flatMap(r => r.violations || []);
+    const violations = allViolations.filter(v => v.type === 'overflow');
+    const conflicts  = results.filter(r => r.conflict).map(r => r.conflict);
+    const failures   = results.filter(r => !r.success);
+
+    onLog({ type: 'engine', round: round + 1, results, violations, conflicts, deltas });
+
+    // If no overflows and no failures, done
+    if (violations.length === 0 && failures.length === 0) {
+      onLog({ type: 'resolved', rounds: round + 1 });
+      return;
+    }
+
+    // Prepare correction prompt
+    const correctionMsg = `Commands executed. Results:\n${JSON.stringify(results.map(r => ({ success: r.success, message: r.message, conflict: r.conflict })), null, 2)}\n\nOverflow violations (elements outside 960×540 bounds):\n${JSON.stringify(violations, null, 2)}\n\nCurrent spec:\n${JSON.stringify(specSummary(engine.spec), null, 2)}\n\nFix only the overflow violations. Do not move other elements. Output only the JSON array.`;
+    messages.push({ role: 'user', content: correctionMsg });
+  }
+
+  onLog({ type: 'gave_up', rounds: MAX_ROUNDS });
+}
+
+// ============================================================================
+// UI
+// ============================================================================
+// Canvas scaling — fit 960×540 inside available stage, centered
+const canvas = document.getElementById('c');
+const stage  = document.getElementById('canvasStage');
+
+function fitCanvas() {
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const scale = Math.min(sw / 960, sh / 540, 1);
+  canvas.style.width  = (960 * scale) + 'px';
+  canvas.style.height = (540 * scale) + 'px';
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
+new ResizeObserver(fitCanvas).observe(stage);
+
+let live = new SpatialFlowLive(JSON.parse(JSON.stringify(INITIAL_SPEC)), canvas);
+
+// Element highlight system — flash elements that were just modified
+const highlights = {}; // elementId -> { frames: N }
+function flashElements(ids, frames = 120) {
+  ids.forEach(id => { highlights[id] = { frames }; });
+}
+let negotiating = false;
+let frameN = 0;
+
+live.start((state) => {
+  frameN++;
+
+  // Draw highlight rings over modified elements
+  const ctx = live.ctx;
+  for (const [id, h] of Object.entries(highlights)) {
+    if (h.frames <= 0) { delete highlights[id]; continue; }
+    const m = state.measurements[id];
+    if (m?.bounds) {
+      const alpha = Math.min(h.frames / 60, 1);
+      const b = m.bounds;
+      const pad = 6;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = '#7eb8ff';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#7eb8ff';
+      ctx.shadowBlur = 20 * alpha;
+      ctx.strokeRect(b.left - pad, b.top - pad, (b.right - b.left) + pad * 2, (b.bottom - b.top) + pad * 2);
+      // Label showing element ID
+      ctx.font = '10px JetBrains Mono';
+      ctx.fillStyle = `rgba(126,184,255,${alpha})`;
+      ctx.shadowBlur = 0;
+      ctx.fillText(id, b.left - pad, b.top - pad - 4);
+      ctx.restore();
+    }
+    h.frames--;
+  }
+
+  if (frameN % 10 === 0) {
+    document.getElementById('elemCount').textContent = `${state.elements.length} el`;
+    document.getElementById('constraintCount').textContent = `${state.constraints?.length ?? 0} constraints`;
+    updateSpecBox();
+  }
+  if (live._fps > 0 && frameN % 60 === 0) {
+    document.getElementById('fpsEl').textContent = `${live._fps} fps`;
+  }
+});
+
+function updateSpecBox() {
+  const spec = live.spec;
+  document.getElementById('specBox').textContent = JSON.stringify({
+    elements: spec.elements.map(e => e.id),
+    constraints: spec.constraints?.map(c => `${c.target}: {${Object.keys(c).filter(k=>k!=='target').join(',')}}`),
+    animations: spec.animations?.map(a => `${a.target}.${a.property}`)
+  }, null, 2);
+}
+
+// Log rendering
+function appendLog(entry) {
+  const box = document.getElementById('negLog');
+
+  // Clear initial placeholder
+  if (box.querySelector('[data-placeholder]')) box.innerHTML = '';
+
+  const round = document.createElement('div');
+  round.className = 'round';
+
+  if (entry.type === 'user') {
+    round.innerHTML = `
+      <div class="round-header user">▸ USER INSTRUCTION</div>
+      <div class="round-body">${entry.text}</div>`;
+
+  } else if (entry.type === 'thinking') {
+    round.innerHTML = `
+      <div class="round-header agent">⟳ ROUND ${entry.round} — CLAUDE THINKING…</div>`;
+    round.id = `thinking-${entry.round}`;
+
+  } else if (entry.type === 'agent') {
+    const th = document.getElementById(`thinking-${entry.round}`);
+    if (th) th.remove();
+    const cmdSummary = entry.commands.map(c =>
+      `<span class="cmd-chip">${c.type}${c.constraint?.target ? ':'+c.constraint.target : c.elementId ? ':'+c.elementId : c.element?.id ? ':'+c.element.id : ''}</span>`
+    ).join('');
+    const bodyId = `cmd-body-${entry.round}`;
+    round.innerHTML = `
+      <div class="round-header agent" style="cursor:pointer" onclick="document.getElementById('${bodyId}').style.display=document.getElementById('${bodyId}').style.display==='none'?'block':'none'">
+        ◈ ROUND ${entry.round} — AGENT COMMANDS <span style="margin-left:auto;font-size:9px;color:var(--dim)">[click to expand]</span>
+      </div>
+      <div class="round-body">${cmdSummary}</div>
+      <div class="round-body" id="${bodyId}" style="display:none;border-top:1px solid var(--border)">${JSON.stringify(entry.commands, null, 2)}</div>`;
+
+  } else if (entry.type === 'engine') {
+    const vcount = entry.violations.length;
+    const ccount = entry.conflicts.length;
+    const cls = vcount > 0 ? 'warn' : 'engine';
+    const icon = vcount > 0 ? '⚠' : '✓';
+    const summary = entry.results.map(r =>
+      `<span class="cmd-chip ${r.success ? 'ok-chip' : 'warn-chip'}">${r.message}</span>`
+    ).join('');
+    // Delta readout — what actually moved
+    const deltaLines = Object.entries(entry.deltas || {}).map(([id, d]) =>
+      `  ${id}: ${Object.entries(d).map(([k,v]) => `${k} ${v}`).join(', ')}`
+    ).join('\n');
+    let body = summary;
+    if (deltaLines) body += `\n\n<span class="ok-chip">MOVED:\n${deltaLines}</span>`;
+    if (vcount > 0) body += `\n\n<span class="warn-chip">overflow: ${entry.violations.map(v => v.elementId).join(', ')}</span>`;
+    if (ccount > 0) body += `\n<span class="gold-chip">replaced constraint on: ${entry.conflicts.map(c => c.target).join(', ')}</span>`;
+    round.innerHTML = `
+      <div class="round-header ${cls}">${icon} ENGINE RESPONSE — round ${entry.round}</div>
+      <div class="round-body">${body}</div>`;
+
+  } else if (entry.type === 'resolved') {
+    round.innerHTML = `
+      <div class="round-header engine">✓ RESOLVED in ${entry.rounds} round${entry.rounds > 1 ? 's' : ''} — 0 violations</div>`;
+
+  } else if (entry.type === 'gave_up') {
+    round.innerHTML = `
+      <div class="round-header warn">⚠ MAX ROUNDS (${entry.rounds}) — violations remain</div>`;
+
+  } else if (entry.type === 'error') {
+    round.innerHTML = `
+      <div class="round-header warn">✗ ERROR</div>
+      <div class="round-body">${entry.text}</div>`;
+  }
+
+  box.appendChild(round);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function runNegotiation() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const instruction = document.getElementById('chatInput').value.trim();
+  if (!apiKey) { document.getElementById('keyStatus').textContent = 'API key required'; document.getElementById('keyStatus').className = 'key-status err'; return; }
+  if (!instruction) return;
+  if (negotiating) return;
+
+  negotiating = true;
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('statusBadge').textContent = '● NEGOTIATING';
+  document.getElementById('statusBadge').className = 'badge negotiating';
+  document.getElementById('keyStatus').textContent = '● key active';
+  document.getElementById('keyStatus').className = 'key-status ok';
+
+  // Add to history
+  const hist = document.getElementById('histBox');
+  const hitem = document.createElement('div');
+  hitem.className = 'hist-item';
+  hitem.textContent = instruction.slice(0, 50) + (instruction.length > 50 ? '…' : '');
+  hitem.addEventListener('click', () => { document.getElementById('chatInput').value = instruction; });
+  hist.insertBefore(hitem, hist.firstChild);
+
+  document.getElementById('chatInput').value = '';
+  // Clear old resolved/gave_up markers but keep user visible
+  document.getElementById('negLog').innerHTML = '';
+
+  await negotiate(instruction, live, apiKey, appendLog);
+
+  negotiating = false;
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('statusBadge').textContent = '● LIVE';
+  document.getElementById('statusBadge').className = 'badge live';
+  updateSpecBox();
+}
+
+// Example prompt buttons
+document.querySelectorAll('.example').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('chatInput').value = btn.dataset.prompt;
+  });
+});
+
+// Send handlers
+document.getElementById('sendBtn').addEventListener('click', runNegotiation);
+document.getElementById('chatInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) runNegotiation();
+});
+
+// API key persistence
+const savedKey = localStorage.getItem('sf_api_key');
+if (savedKey) {
+  document.getElementById('apiKey').value = savedKey;
+  document.getElementById('keyStatus').textContent = '● key loaded from storage';
+  document.getElementById('keyStatus').className = 'key-status ok';
+}
+document.getElementById('apiKey').addEventListener('change', () => {
+  localStorage.setItem('sf_api_key', document.getElementById('apiKey').value);
+});
+
+updateSpecBox();
+</script>
+</body>
+</html>

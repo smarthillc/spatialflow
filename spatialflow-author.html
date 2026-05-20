@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>SpatialFlow — Authoring Surface</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0d14; --panel:#111119; --border:#1c1c2e; --surface:#16162a;
+    --text:#c8c8d8; --dim:#4a4a6a; --accent:#7eb8ff; --accent2:#4ecdc4;
+    --warn:#ff6b6b; --ok:#50e890; --gold:#f7b731; --violet:#c084fc;
+    --mono:'JetBrains Mono',monospace; --sans:'DM Sans',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);
+       height:100vh;display:grid;grid-template-columns:240px 1fr 340px;overflow:hidden;}
+
+  .panel{background:var(--panel);border-right:1px solid var(--border);
+          padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+  .panel.right{border-right:none;border-left:1px solid var(--border);}
+
+  .ph{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;
+      text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  .ph::before{content:'';width:3px;height:12px;background:var(--accent);border-radius:2px;}
+  .ph.violet::before,.ph.violet{color:var(--violet);} .ph.violet::before{background:var(--violet);}
+  .ph.ok::before,.ph.ok{color:var(--ok);} .ph.ok::before{background:var(--ok);}
+
+  .section{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:9px;}
+
+  /* Element list */
+  .el-item{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:4px;
+            font-family:var(--mono);font-size:10px;color:var(--dim);cursor:pointer;transition:all .12s;}
+  .el-item:hover{background:var(--surface);color:var(--text);}
+  .el-item.selected{background:rgba(126,184,255,.1);color:var(--accent);border:1px solid rgba(126,184,255,.2);}
+  .el-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .el-type{font-size:9px;color:var(--dim);margin-left:auto;}
+
+  /* Add element buttons */
+  .add-btn{font-family:var(--mono);font-size:10px;padding:5px 8px;background:var(--surface);
+            border:1px solid var(--border);color:var(--dim);border-radius:3px;cursor:pointer;
+            text-align:left;transition:all .12s;width:100%;}
+  .add-btn:hover{color:var(--accent2);border-color:var(--accent2);}
+
+  /* Canvas */
+  .canvas-wrap{display:flex;flex-direction:column;height:100vh;background:#08080f;overflow:hidden;}
+  .toolbar{display:flex;align-items:center;gap:8px;padding:8px 14px;flex-shrink:0;
+           background:var(--panel);border-bottom:1px solid var(--border);
+           font-family:var(--mono);font-size:10px;color:var(--dim);}
+  .badge{background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:3px;font-size:9px;}
+  .badge.live{color:var(--ok);border-color:rgba(80,232,144,.3);}
+  .badge.drag{color:var(--gold);border-color:rgba(247,183,49,.3);}
+  .canvas-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;
+                background:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,.008) 10px,rgba(255,255,255,.008) 20px);}
+  .canvas-container{position:relative;flex-shrink:0;}
+  canvas{display:block;box-shadow:0 0 0 1px #2a2a4a,0 8px 40px rgba(0,0,0,.6);}
+  #overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+
+  /* Right panel — Inspector */
+  .key-input{width:100%;font-family:var(--mono);font-size:11px;background:var(--bg);
+             border:1px solid var(--border);color:var(--text);padding:6px 9px;border-radius:4px;outline:none;}
+  .key-input:focus{border-color:var(--accent);}
+  .key-status{font-family:var(--mono);font-size:9px;margin-top:3px;}
+  .key-status.ok{color:var(--ok);}
+
+  .prop-row{display:flex;justify-content:space-between;align-items:baseline;
+            font-family:var(--mono);font-size:10px;padding:2px 0;
+            border-bottom:1px solid rgba(255,255,255,.03);}
+  .prop-name{color:var(--dim);}
+  .prop-val{color:var(--accent2);}
+
+  .constraint-row{font-family:var(--mono);font-size:9px;padding:4px 0;
+                   border-bottom:1px solid rgba(255,255,255,.03);line-height:1.6;}
+  .cr-prop{color:var(--dim);}
+  .cr-expr{color:var(--accent2);}
+  .cr-intent{color:var(--violet);font-size:9px;}
+
+  .intent-input{width:100%;font-family:var(--sans);font-size:12px;background:var(--surface);
+                border:1px solid var(--border);color:var(--text);padding:8px;border-radius:5px;
+                outline:none;resize:none;min-height:60px;line-height:1.5;}
+  .intent-input:focus{border-color:var(--violet);}
+  .compile-btn{font-family:var(--mono);font-size:10px;padding:6px 12px;
+               background:rgba(192,132,252,.12);border:1px solid rgba(192,132,252,.3);
+               color:var(--violet);border-radius:4px;cursor:pointer;transition:all .15s;align-self:flex-end;}
+  .compile-btn:hover{background:rgba(192,132,252,.22);}
+  .compile-btn:disabled{opacity:.4;cursor:default;}
+
+  .intent-chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;
+               padding:2px 6px;border-radius:3px;margin:2px 2px 2px 0;}
+  .intent-chip.reactive{background:rgba(80,232,144,.08);color:var(--ok);border:1px solid rgba(80,232,144,.15);}
+  .intent-chip.directional{background:rgba(247,183,49,.08);color:var(--gold);border:1px solid rgba(247,183,49,.15);}
+  .intent-chip.measure{background:rgba(78,205,196,.08);color:var(--accent2);border:1px solid rgba(78,205,196,.15);}
+
+  .log{font-family:var(--mono);font-size:9px;color:var(--dim);max-height:80px;overflow-y:auto;
+        background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;
+        padding:5px;white-space:pre-wrap;line-height:1.6;}
+
+  .no-selection{font-family:var(--mono);font-size:10px;color:var(--dim);
+                 padding:12px 0;text-align:center;line-height:1.8;}
+
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .badge.compiling{color:var(--violet);border-color:rgba(192,132,252,.3);animation:pulse .8s infinite;}
+
+  ::-webkit-scrollbar{width:3px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- LEFT: ELEMENT LIST -->
+<div class="panel">
+  <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">
+    Spatial<span style="color:var(--accent)">Flow</span>
+    <span style="font-size:9px;color:var(--dim);margin-left:6px">Authoring</span>
+  </div>
+
+  <div class="ph">Elements</div>
+  <div id="elementList" style="display:flex;flex-direction:column;gap:2px;"></div>
+
+  <div class="ph">Add</div>
+  <div style="display:flex;flex-direction:column;gap:3px;">
+    <button class="add-btn" data-add="rectangle">▭ Rectangle</button>
+    <button class="add-btn" data-add="circle">● Circle</button>
+    <button class="add-btn" data-add="text">T Text</button>
+    <button class="add-btn" data-add="text_box">❏ Text Box</button>
+  </div>
+
+  <div class="ph">Constraint Graph</div>
+  <div class="section" style="font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.8;">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+      <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#50e890" stroke-width="1.5" marker-end="url(#a-ok)"/></svg>
+      <span style="color:var(--ok)">reactive</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+      <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#f7b731" stroke-width="1.5" stroke-dasharray="3,2"/></svg>
+      <span style="color:var(--gold)">directional</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+      <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#4ecdc4" stroke-width="1.5" stroke-dasharray="1,2"/></svg>
+      <span style="color:var(--accent2)">measure</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#7eb8ff" stroke-width="1.5" stroke-dasharray="4,2"/></svg>
+      <span style="color:var(--accent)">signal</span>
+    </div>
+  </div>
+</div>
+
+<!-- CENTER: CANVAS -->
+<div class="canvas-wrap">
+  <div class="toolbar">
+    <span>SpatialFlow — Phase 4</span>
+    <span class="badge live" id="statusBadge">● LIVE</span>
+    <span id="modeLabel" class="badge" style="color:var(--dim)">click to select</span>
+    <span id="constraintCount" class="badge">0 constraints</span>
+    <span style="margin-left:auto;font-size:9px;" id="fpsEl">— fps</span>
+  </div>
+  <div class="canvas-stage" id="canvasStage">
+    <div class="canvas-container" id="canvasContainer">
+      <canvas id="c" width="960" height="540"></canvas>
+      <svg id="overlay" viewBox="0 0 960 540" preserveAspectRatio="none">
+        <defs>
+          <marker id="arr-ok" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#50e890" opacity=".7"/>
+          </marker>
+          <marker id="arr-dir" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#f7b731" opacity=".7"/>
+          </marker>
+          <marker id="arr-mea" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#4ecdc4" opacity=".7"/>
+          </marker>
+          <marker id="arr-sig" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#7eb8ff" opacity=".7"/>
+          </marker>
+        </defs>
+        <g id="arrowLayer"></g>
+        <g id="selectionLayer"></g>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT: INSPECTOR -->
+<div class="panel right">
+  <div class="ph">API Key</div>
+  <div class="section" style="display:flex;flex-direction:column;gap:4px;">
+    <input class="key-input" id="apiKey" type="password" placeholder="sk-ant-…"/>
+    <div class="key-status" id="keyStatus">Enter key</div>
+  </div>
+
+  <div class="ph ok">Inspector</div>
+  <div id="inspector">
+    <div class="no-selection">Click an element<br>on the canvas to inspect</div>
+  </div>
+
+  <div class="ph violet">Intent for Selection</div>
+  <div style="display:flex;flex-direction:column;gap:5px;">
+    <textarea class="intent-input" id="intentInput"
+      placeholder="Describe what the selected element should do…&#10;&#10;e.g. always center horizontally on slide&#10;e.g. stay 12px below the title&#10;e.g. match the title's text width"></textarea>
+    <button class="compile-btn" id="compileBtn" disabled>Compile Intent ◈</button>
+  </div>
+
+  <div class="ph violet" style="flex-shrink:0;">Active Intents</div>
+  <div id="intentList" style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--dim);">None yet.</div>
+  </div>
+
+  <div class="ph" style="flex-shrink:0;">Log</div>
+  <div class="log" id="logBox">Ready.</div>
+</div>
+
+<script src="spatialflow-engine.js"></script>
+<script>
+// ============================================================================
+// SpatialFlowLive
+// ============================================================================
+class SpatialFlowLive extends SpatialFlowEngine {
+  constructor(spec, canvas) {
+    super(spec, canvas);
+    this._sigs = { mouse: {x:480,y:270}, time: {ms:0,s:0,norm:0} };
+    this._raf = null; this._playing = false; this._t0 = null;
+    this._fps = 0; this._fc = 0; this._lf = 0; this._onFrame = null;
+  }
+  start(cb) {
+    if (this._playing) return;
+    this._playing = true; this._t0 = performance.now(); this._onFrame = cb; this._loop();
+  }
+  _loop() {
+    this._raf = requestAnimationFrame(() => {
+      if (!this._playing) return;
+      const now = performance.now(), t = Math.min(now - this._t0, 7999);
+      this._sigs.time = {ms:t, s:t/1000, norm:t/8000};
+      const state = this.renderFrame(t, this._sigs);
+      if (this._onFrame) this._onFrame(state, t);
+      this._fc++;
+      if (now - this._lf >= 1000) { this._fps = this._fc; this._fc = 0; this._lf = now; }
+      this._loop();
+    });
+  }
+}
+
+// ============================================================================
+// Spec
+// ============================================================================
+const SPEC = {
+  metadata: {width:960, height:540, background:'#0d0d14', duration:8000},
+  elements: [
+    {id:'bg',       type:'rectangle', x:0,   y:0,   width:960, height:540, fill:'#0d0d14'},
+    {id:'title',    type:'text_box',  x:60,  y:60,  width:440, height:70,
+     content:'SpatialFlow', font:'bold 42px DM Sans', color:'#e8e8f8'},
+    {id:'subtitle', type:'text_box',  x:60,  y:148, width:440, height:36,
+     content:'Reactive constraint layout for agents', font:'15px DM Sans', color:'#5a5a8a'},
+    {id:'accent',   type:'rectangle', x:60,  y:196, width:180, height:3,  fill:'#7eb8ff'},
+    {id:'hero_box', type:'rectangle', x:620, y:70,  width:280, height:220,
+     fill:'#111119', stroke:'#1c1c2e', stroke_width:1},
+    {id:'dot',      type:'circle',    x:760, y:180, radius:38, fill:'#7eb8ff'},
+    {id:'hero_lbl', type:'text',      x:620, y:316,
+     content:'hero element', font:'11px JetBrains Mono', color:'#3a3a5a'},
+    {id:'card_a',   type:'rectangle', x:60,  y:340, width:180, height:100,
+     fill:'#111119', stroke:'#1c1c2e', stroke_width:1},
+    {id:'card_b',   type:'rectangle', x:260, y:340, width:180, height:100,
+     fill:'#111119', stroke:'#1c1c2e', stroke_width:1},
+    {id:'card_c',   type:'rectangle', x:460, y:340, width:180, height:100,
+     fill:'#111119', stroke:'#1c1c2e', stroke_width:1},
+  ],
+  constraints: [],
+  animations: []
+};
+
+// ============================================================================
+// Intent system (from Phase 3)
+// ============================================================================
+const INTENT_PROMPT = `You are a SpatialFlow semantic constraint compiler.
+
+Convert a natural language spatial relationship into reactive constraint expressions.
+The selected element is the PRIMARY SUBJECT — write constraints that position or size IT.
+
+ELEMENT MEASUREMENT REFS:
+{id}.x, {id}.y, {id}.width, {id}.height
+{id}.bounds.left/right/top/bottom, {id}.centerX, {id}.centerY, {id}.actualWidth
+slide.width=960, slide.height=540, slide.centerX=480, slide.centerY=270
+Signals: mouse.x, mouse.y, time.ms, time.norm
+
+MATH: sin, cos, clamp(x,min,max), lerp(a,b,t), abs, min, max, sqrt
+TERNARY OK: condition ? value_a : value_b
+
+Classify: "reactive" | "directional" | "measure"
+
+Output ONLY a JSON array (no prose, no fences):
+[{"target":"id","prop":"x|y|width|height","expr":"...","explanation":"...","type":"reactive|directional|measure","deps":["ids"]}]`;
+
+const intents = [];
+let intentIdN = 0;
+
+function getCtx() {
+  const m = live.evaluate(0, {}).measurements;
+  return live.spec.elements.map(el => {
+    const em = m[el.id] || {};
+    return {
+      id:el.id, type:el.type,
+      x:Math.round(em.x||0), y:Math.round(em.y||0),
+      width:Math.round(em.width||0), height:Math.round(em.height||0),
+      centerX:Math.round(em.centerX||0), centerY:Math.round(em.centerY||0),
+      actualWidth:Math.round(em.actualWidth||em.width||0),
+      bounds: em.bounds ? {
+        left:Math.round(em.bounds.left), right:Math.round(em.bounds.right),
+        top:Math.round(em.bounds.top), bottom:Math.round(em.bounds.bottom)
+      } : undefined
+    };
+  });
+}
+
+async function compileIntent(natural, selectedId, apiKey) {
+  const ctx = getCtx();
+  const selEl = ctx.find(e => e.id === selectedId);
+  const userMsg = `Selected element: ${JSON.stringify(selEl)}\n\nAll elements:\n${JSON.stringify(ctx, null, 2)}\n\nIntent: "${natural}"`;
+
+  setStatus('compiling');
+  log(`Compiling for [${selectedId}]: "${natural}"`);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'x-api-key':apiKey, 'anthropic-version':'2023-06-01',
+        'content-type':'application/json', 'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:600,
+        system:INTENT_PROMPT, messages:[{role:'user',content:userMsg}]})
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const raw = data.content?.[0]?.text || '[]';
+    log(`Raw: ${raw.slice(0,120)}`);
+
+    const s = raw.indexOf('['), e = raw.lastIndexOf(']');
+    const compiled = JSON.parse(raw.slice(s, e+1));
+
+    const deps = new Set();
+    for (const c of compiled) {
+      live.executeCommand({type:'add_constraint', constraint:{target:c.target, [c.prop]:c.expr}});
+      (c.deps||[]).forEach(d => deps.add(d));
+    }
+
+    const intent = {
+      id:`i${++intentIdN}`, natural, compiled,
+      type: compiled[0]?.type || 'reactive',
+      deps: Array.from(deps), forElement: selectedId
+    };
+    intents.push(intent);
+    log(`✓ ${compiled.length} constraint(s) — ${intent.type}`);
+    renderIntentList();
+    updateArrows(lastState);
+  } catch(err) {
+    log(`ERROR: ${err.message}`);
+  }
+  setStatus('live');
+}
+
+// ============================================================================
+// Selection + drag
+// ============================================================================
+let selectedId   = null;
+let dragState    = null;  // {id, startMouse, startPos}
+let lastState    = null;
+let elementCount = 0;
+
+function canvasCoords(e) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * (960 / r.width),
+    y: (e.clientY - r.top)  * (540 / r.height)
+  };
+}
+
+function hitTest(cx, cy) {
+  if (!lastState) return null;
+  const els = [...live.spec.elements].reverse();
+  for (const el of els) {
+    if (el.id === 'bg') continue;
+    const m = lastState.measurements[el.id];
+    if (!m) continue;
+    if (el.type === 'circle') {
+      const dx = cx - m.x, dy = cy - m.y;
+      if (dx*dx + dy*dy <= (el.radius||0)**2) return el.id;
+    } else if (m.bounds) {
+      const b = m.bounds;
+      if (cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom) return el.id;
+    }
+  }
+  return null;
+}
+
+function selectElement(id) {
+  selectedId = id;
+  renderElementList();
+  renderInspector();
+  updateSelection();
+  document.getElementById('compileBtn').disabled = !id || !document.getElementById('apiKey').value.trim();
+}
+
+// Canvas + stage refs — must be declared before any event listener that uses them
+const canvas    = document.getElementById('c');
+const container = document.getElementById('canvasContainer');
+const stage     = document.getElementById('canvasStage');
+
+function fitCanvas() {
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const scale = Math.min(sw / 960, sh / 540, 1);
+  const w = 960 * scale, h = 540 * scale;
+  canvas.style.width  = w + 'px'; canvas.style.height = h + 'px';
+  container.style.width = w + 'px'; container.style.height = h + 'px';
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
+new ResizeObserver(fitCanvas).observe(stage);
+
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  const {x,y} = canvasCoords(e);
+  const hit = hitTest(x, y);
+  selectElement(hit);
+  if (hit && hit !== 'bg') {
+    const m = lastState?.measurements[hit];
+    dragState = { id:hit, startMouse:{x,y}, startPos:{x:m?.x||0, y:m?.y||0} };
+    document.getElementById('modeLabel').textContent = `dragging: ${hit}`;
+    document.getElementById('modeLabel').className = 'badge drag';
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!dragState) return;
+  const {x,y} = canvasCoords(e);
+  const dx = x - dragState.startMouse.x, dy = y - dragState.startMouse.y;
+  const nx = Math.round(dragState.startPos.x + dx);
+  const ny = Math.round(dragState.startPos.y + dy);
+  live.executeCommand({type:'update_element', elementId:dragState.id, props:{x:nx, y:ny}});
+});
+
+canvas.addEventListener('mouseup', () => {
+  dragState = null;
+  document.getElementById('modeLabel').textContent = 'click to select';
+  document.getElementById('modeLabel').className = 'badge';
+  renderInspector();
+});
+
+canvas.addEventListener('mouseleave', () => { dragState = null; });
+
+// ============================================================================
+// SVG constraint arrows
+// ============================================================================
+const ARROW_COLORS = {reactive:'#50e890', directional:'#f7b731', measure:'#4ecdc4', signal:'#7eb8ff'};
+const ARROW_DASH   = {reactive:'none', directional:'5,3', measure:'2,3', signal:'6,3'};
+const ARROW_MARKERS = {reactive:'arr-ok', directional:'arr-dir', measure:'arr-mea', signal:'arr-sig'};
+
+function updateArrows(state) {
+  const layer = document.getElementById('arrowLayer');
+  if (!layer || !state) return;
+  layer.innerHTML = '';
+
+  for (const intent of intents) {
+    for (const c of intent.compiled) {
+      for (const dep of (c.deps || intent.deps || [])) {
+        const fromM = state.measurements[dep];
+        const toM   = state.measurements[c.target];
+        if (!fromM || !toM) continue;
+
+        const x1 = fromM.centerX || (fromM.bounds ? (fromM.bounds.left+fromM.bounds.right)/2 : fromM.x);
+        const y1 = fromM.centerY || (fromM.bounds ? (fromM.bounds.top+fromM.bounds.bottom)/2 : fromM.y);
+        const x2 = toM.centerX   || (toM.bounds   ? (toM.bounds.left+toM.bounds.right)/2     : toM.x);
+        const y2 = toM.centerY   || (toM.bounds   ? (toM.bounds.top+toM.bounds.bottom)/2     : toM.y);
+
+        if (Math.abs(x1-x2) < 2 && Math.abs(y1-y2) < 2) continue;
+
+        const color  = ARROW_COLORS[intent.type] || '#7eb8ff';
+        const dash   = ARROW_DASH[intent.type]   || 'none';
+        const marker = ARROW_MARKERS[intent.type] || 'arr-ok';
+
+        // Offset from center slightly so overlapping arrows are visible
+        const mid = {x:(x1+x2)/2, y:(y1+y2)/2};
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+        line.setAttribute('stroke', color);
+        line.setAttribute('stroke-width', '1.5');
+        line.setAttribute('stroke-opacity', '0.55');
+        line.setAttribute('stroke-dasharray', dash);
+        line.setAttribute('marker-end', `url(#${marker})`);
+        layer.appendChild(line);
+
+        // Dep label at midpoint
+        const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+        txt.setAttribute('x', mid.x); txt.setAttribute('y', mid.y - 4);
+        txt.setAttribute('font-family', 'JetBrains Mono, monospace');
+        txt.setAttribute('font-size', '8');
+        txt.setAttribute('fill', color); txt.setAttribute('fill-opacity', '0.7');
+        txt.setAttribute('text-anchor', 'middle');
+        txt.textContent = `.${c.prop}`;
+        layer.appendChild(txt);
+      }
+    }
+  }
+}
+
+function updateSelection() {
+  const layer = document.getElementById('selectionLayer');
+  layer.innerHTML = '';
+  if (!selectedId || !lastState) return;
+  const m = lastState.measurements[selectedId];
+  if (!m?.bounds) return;
+  const b = m.bounds, pad = 5;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  rect.setAttribute('x', b.left-pad); rect.setAttribute('y', b.top-pad);
+  rect.setAttribute('width', b.right-b.left+pad*2); rect.setAttribute('height', b.bottom-b.top+pad*2);
+  rect.setAttribute('fill','none'); rect.setAttribute('stroke','#c084fc');
+  rect.setAttribute('stroke-width','1.5'); rect.setAttribute('stroke-dasharray','4,3');
+  rect.setAttribute('rx','3');
+  layer.appendChild(rect);
+
+  // ID label
+  const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+  lbl.setAttribute('x', b.left-pad); lbl.setAttribute('y', b.top-pad-4);
+  lbl.setAttribute('font-family','JetBrains Mono,monospace'); lbl.setAttribute('font-size','9');
+  lbl.setAttribute('fill','#c084fc');
+  lbl.textContent = selectedId;
+  layer.appendChild(lbl);
+}
+
+// ============================================================================
+// UI rendering
+// ============================================================================
+const TYPE_COLORS = {reactive:'var(--ok)', directional:'var(--gold)', measure:'var(--accent2)'};
+
+const EL_COLORS = {
+  rectangle:'#7eb8ff', circle:'#ff6b6b', text:'#50e890', text_box:'#4ecdc4',
+  image:'#f7b731', frame:'#c084fc', line:'#aaa', connector:'#aaa'
+};
+
+function renderElementList() {
+  const box = document.getElementById('elementList');
+  box.innerHTML = live.spec.elements.filter(e => e.id !== 'bg').map(el => `
+    <div class="el-item ${selectedId===el.id?'selected':''}" onclick="selectElement('${el.id}')">
+      <div class="el-dot" style="background:${EL_COLORS[el.type]||'#666'}"></div>
+      <span>${el.id}</span>
+      <span class="el-type">${el.type}</span>
+    </div>`
+  ).join('');
+}
+
+function renderInspector() {
+  const box = document.getElementById('inspector');
+  if (!selectedId || !lastState) {
+    box.innerHTML = '<div class="no-selection">Click an element<br>on the canvas to inspect</div>';
+    return;
+  }
+  const el = live.spec.elements.find(e => e.id === selectedId);
+  const m  = lastState.measurements[selectedId];
+  if (!el || !m) { box.innerHTML = '<div class="no-selection">No data</div>'; return; }
+
+  const props = [
+    ['x', Math.round(m.x||0)], ['y', Math.round(m.y||0)],
+    ['width', Math.round(m.width||0)], ['height', Math.round(m.height||0)],
+    ['centerX', Math.round(m.centerX||0)], ['centerY', Math.round(m.centerY||0)],
+  ];
+  if (m.actualWidth) props.push(['actualWidth', Math.round(m.actualWidth)]);
+
+  // Find constraints for this element
+  const elConstraints = (live.spec.constraints||[]).filter(c => c.target === selectedId);
+  const elIntents = intents.filter(i => i.forElement === selectedId || i.compiled.some(c => c.target === selectedId));
+
+  box.innerHTML = `
+    <div class="section" style="margin-bottom:6px;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--violet);margin-bottom:6px;font-weight:700;">${el.type.toUpperCase()} · ${el.id}</div>
+      ${props.map(([k,v]) => `<div class="prop-row"><span class="prop-name">${k}</span><span class="prop-val">${v}</span></div>`).join('')}
+    </div>
+    ${elConstraints.length > 0 ? `
+    <div class="section" style="margin-bottom:6px;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:4px;">CONSTRAINTS</div>
+      ${elConstraints.map(c => `
+        <div class="constraint-row">
+          ${['x','y','width','height'].filter(p => c[p]).map(p =>
+            `<span class="cr-prop">${p}</span> = <span class="cr-expr">${c[p]}</span>`
+          ).join('<br>')}
+        </div>`).join('')}
+    </div>` : ''}
+    ${elIntents.length > 0 ? `
+    <div style="margin-bottom:2px;">
+      ${elIntents.map(i => `<span class="intent-chip ${i.type}">${i.type}: ${i.natural.slice(0,30)}…</span>`).join('')}
+    </div>` : ''}`;
+}
+
+function renderIntentList() {
+  const box = document.getElementById('intentList');
+  if (intents.length === 0) {
+    box.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--dim);">None yet.</div>';
+    return;
+  }
+  box.innerHTML = intents.map(i => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 9px;font-family:var(--mono);font-size:9px;">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;">
+        <span style="color:${TYPE_COLORS[i.type]||'var(--dim)'}">●</span>
+        <span style="color:var(--dim);">[${i.forElement}]</span>
+        <span style="color:var(--text);flex:1;">${i.natural.slice(0,40)}${i.natural.length>40?'…':''}</span>
+        <button onclick="removeIntent('${i.id}')" style="font-family:var(--mono);font-size:9px;background:none;border:none;color:var(--warn);cursor:pointer;">✕</button>
+      </div>
+      ${i.compiled.map(c => `<div style="color:var(--dim)">${c.target}.<span style="color:var(--accent2)">${c.prop}</span> = <span style="color:var(--accent2)">${c.expr.slice(0,50)}${c.expr.length>50?'…':''}</span></div>`).join('')}
+    </div>`
+  ).join('');
+}
+
+function removeIntent(id) {
+  const idx = intents.findIndex(i => i.id === id);
+  if (idx < 0) return;
+  const intent = intents[idx];
+  intent.compiled.forEach(c => live.executeCommand({type:'remove_constraint', elementId:c.target}));
+  intents.splice(idx, 1);
+  renderIntentList();
+  if (lastState) updateArrows(lastState);
+  log(`Removed intent: "${intent.natural.slice(0,40)}"`);
+}
+
+function setStatus(s) {
+  const b = document.getElementById('statusBadge');
+  if (s==='compiling') { b.textContent='◈ COMPILING'; b.className='badge compiling'; }
+  else { b.textContent='● LIVE'; b.className='badge live'; }
+}
+
+function log(msg) {
+  const box = document.getElementById('logBox');
+  box.textContent = msg + '\n' + box.textContent.split('\n').slice(0,20).join('\n');
+}
+
+// ============================================================================
+// Add element
+// ============================================================================
+let newElN = 0;
+document.querySelectorAll('.add-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const type = btn.dataset.add;
+    const id = `el_${++newElN}`;
+    const el = {id, type, x:120+newElN*20, y:120+newElN*15};
+    if (type==='rectangle') { el.width=120; el.height=80; el.fill='#1a1a2e'; el.stroke='#2a2a4a'; el.stroke_width=1; }
+    if (type==='circle') { el.radius=30; el.fill='#4ecdc4'; }
+    if (type==='text') { el.content='New text'; el.font='14px DM Sans'; el.color='#c8c8d8'; }
+    if (type==='text_box') { el.width=200; el.height=60; el.content='New text box'; el.font='14px DM Sans'; el.color='#c8c8d8'; }
+    live.executeCommand({type:'add_element', element:el});
+    renderElementList();
+    selectElement(id);
+    log(`Added ${type}: ${id}`);
+  });
+});
+
+// ============================================================================
+// Boot
+// ============================================================================
+const live = new SpatialFlowLive(JSON.parse(JSON.stringify(SPEC)), canvas);
+let frameN = 0;
+
+// Seed lastState immediately so hitTest works before first rAF fires
+lastState = live.evaluate(0, {});
+live.renderFrame(0, {});
+renderElementList();
+
+live.start((state) => {
+  frameN++;
+  lastState = state;
+
+  // Update SVG overlays every frame (selection ring tracks dragged element)
+  if (frameN % 2 === 0) {
+    updateArrows(state);
+    updateSelection();
+  }
+  if (frameN % 20 === 0) {
+    document.getElementById('constraintCount').textContent = `${state.constraints?.length??0} constraints`;
+    if (selectedId) renderInspector();
+  }
+  if (frameN % 60 === 0 && live._fps > 0) {
+    document.getElementById('fpsEl').textContent = `${live._fps} fps`;
+    renderElementList();
+  }
+});
+
+// Initial render
+renderElementList();
+renderIntentList();
+
+// Compile button
+document.getElementById('compileBtn').addEventListener('click', async () => {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const natural = document.getElementById('intentInput').value.trim();
+  if (!apiKey || !natural || !selectedId) return;
+  document.getElementById('compileBtn').disabled = true;
+  document.getElementById('intentInput').value = '';
+  await compileIntent(natural, selectedId, apiKey);
+  document.getElementById('compileBtn').disabled = false;
+});
+
+document.getElementById('intentInput').addEventListener('keydown', e => {
+  if (e.key==='Enter' && (e.metaKey||e.ctrlKey)) document.getElementById('compileBtn').click();
+});
+
+document.getElementById('apiKey').addEventListener('input', () => {
+  const hasKey = !!document.getElementById('apiKey').value.trim();
+  document.getElementById('compileBtn').disabled = !hasKey || !selectedId;
+  document.getElementById('keyStatus').textContent = hasKey ? '● key active' : 'Enter key';
+  document.getElementById('keyStatus').className = hasKey ? 'key-status ok' : 'key-status';
+  if (hasKey) localStorage.setItem('sf_api_key', document.getElementById('apiKey').value);
+});
+
+const savedKey = localStorage.getItem('sf_api_key');
+if (savedKey) {
+  document.getElementById('apiKey').value = savedKey;
+  document.getElementById('keyStatus').textContent = '● key loaded';
+  document.getElementById('keyStatus').className = 'key-status ok';
+}
+</script>
+</body>
+</html>
