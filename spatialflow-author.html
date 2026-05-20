@@ -53,7 +53,9 @@
   .canvas-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;
                 background:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,.008) 10px,rgba(255,255,255,.008) 20px);}
   .canvas-container{position:relative;flex-shrink:0;}
-  canvas{display:block;box-shadow:0 0 0 1px #2a2a4a,0 8px 40px rgba(0,0,0,.6);}
+  canvas{display:block;box-shadow:0 0 0 1px #2a2a4a,0 8px 40px rgba(0,0,0,.6);cursor:crosshair;}
+  canvas.hovering{cursor:grab;}
+  canvas.dragging{cursor:grabbing;}
   #overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
 
   /* Right panel — Inspector */
@@ -252,16 +254,16 @@ const SPEC = {
      content:'Reactive constraint layout for agents', font:'15px DM Sans', color:'#5a5a8a'},
     {id:'accent',   type:'rectangle', x:60,  y:196, width:180, height:3,  fill:'#7eb8ff'},
     {id:'hero_box', type:'rectangle', x:620, y:70,  width:280, height:220,
-     fill:'#111119', stroke:'#1c1c2e', stroke_width:1},
+     fill:'#131325', stroke:'#2a2a50', stroke_width:1},
     {id:'dot',      type:'circle',    x:760, y:180, radius:38, fill:'#7eb8ff'},
-    {id:'hero_lbl', type:'text',      x:620, y:316,
-     content:'hero element', font:'11px JetBrains Mono', color:'#3a3a5a'},
+    {id:'hero_lbl', type:'text',      x:630, y:316,
+     content:'hero element', font:'11px JetBrains Mono', color:'#4a4a7a'},
     {id:'card_a',   type:'rectangle', x:60,  y:340, width:180, height:100,
-     fill:'#111119', stroke:'#1c1c2e', stroke_width:1},
+     fill:'#0f1a2e', stroke:'#1c3050', stroke_width:1},
     {id:'card_b',   type:'rectangle', x:260, y:340, width:180, height:100,
-     fill:'#111119', stroke:'#1c1c2e', stroke_width:1},
+     fill:'#0e201a', stroke:'#1a3828', stroke_width:1},
     {id:'card_c',   type:'rectangle', x:460, y:340, width:180, height:100,
-     fill:'#111119', stroke:'#1c1c2e', stroke_width:1},
+     fill:'#1e1030', stroke:'#321850', stroke_width:1},
   ],
   constraints: [],
   animations: []
@@ -415,6 +417,13 @@ fitCanvas();
 window.addEventListener('resize', fitCanvas);
 new ResizeObserver(fitCanvas).observe(stage);
 
+canvas.addEventListener('mousemove', e => {
+  if (dragState) return;
+  const {x,y} = canvasCoords(e);
+  const hit = hitTest(x,y);
+  canvas.className = hit && hit !== 'bg' ? 'hovering' : '';
+});
+
 canvas.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
   const {x,y} = canvasCoords(e);
@@ -423,6 +432,7 @@ canvas.addEventListener('mousedown', e => {
   if (hit && hit !== 'bg') {
     const m = lastState?.measurements[hit];
     dragState = { id:hit, startMouse:{x,y}, startPos:{x:m?.x||0, y:m?.y||0} };
+    canvas.className = 'dragging';
     document.getElementById('modeLabel').textContent = `dragging: ${hit}`;
     document.getElementById('modeLabel').className = 'badge drag';
   }
@@ -439,12 +449,13 @@ canvas.addEventListener('mousemove', e => {
 
 canvas.addEventListener('mouseup', () => {
   dragState = null;
+  canvas.className = '';
   document.getElementById('modeLabel').textContent = 'click to select';
   document.getElementById('modeLabel').className = 'badge';
   renderInspector();
 });
 
-canvas.addEventListener('mouseleave', () => { dragState = null; });
+canvas.addEventListener('mouseleave', () => { dragState = null; canvas.className = ''; });
 
 // ============================================================================
 // SVG constraint arrows

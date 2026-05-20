@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>SpatialFlow</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0d14; --surface:#111119; --border:#1c1c2e; --deep:#16162a;
+    --text:#c8c8d8; --dim:#4a4a6a; --muted:#2a2a4a;
+    --accent:#7eb8ff; --accent2:#4ecdc4; --violet:#c084fc;
+    --ok:#50e890; --gold:#f7b731; --warn:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --sans:'DM Sans',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+  /* NAV */
+  nav{position:fixed;top:0;left:0;right:0;z-index:100;
+      display:flex;align-items:center;gap:16px;padding:14px 40px;
+      background:rgba(13,13,20,.85);backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--border);}
+  .nav-logo{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text);text-decoration:none;}
+  .nav-logo span{color:var(--accent);}
+  nav a{font-family:var(--mono);font-size:11px;color:var(--dim);text-decoration:none;transition:color .15s;}
+  nav a:hover{color:var(--accent);}
+  .nav-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+  .gh-btn{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;
+           padding:6px 14px;background:var(--surface);border:1px solid var(--border);
+           color:var(--text);border-radius:5px;text-decoration:none;transition:all .15s;}
+  .gh-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* HERO */
+  .hero{padding:140px 40px 80px;max-width:900px;margin:0 auto;text-align:center;}
+  .hero-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+                 color:var(--accent);margin-bottom:20px;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .hero-eyebrow::before,.hero-eyebrow::after{content:'';flex:1;max-width:60px;height:1px;background:var(--border);}
+  h1{font-size:clamp(42px,6vw,72px);font-weight:700;line-height:1.05;letter-spacing:-.03em;
+      color:#e8e8f8;margin-bottom:24px;}
+  h1 span{color:var(--accent);}
+  .hero-sub{font-size:18px;color:var(--dim);line-height:1.7;max-width:600px;margin:0 auto 40px;}
+  .hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+  .btn-primary{padding:12px 28px;background:var(--accent);color:#0d0d14;font-family:var(--mono);
+                font-size:12px;font-weight:700;border:none;border-radius:6px;cursor:pointer;
+                text-decoration:none;transition:all .15s;letter-spacing:.04em;}
+  .btn-primary:hover{background:#a0ccff;transform:translateY(-1px);}
+  .btn-ghost{padding:12px 28px;background:transparent;color:var(--text);font-family:var(--mono);
+              font-size:12px;font-weight:500;border:1px solid var(--border);border-radius:6px;
+              cursor:pointer;text-decoration:none;transition:all .15s;}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* CORE THESIS */
+  .thesis{padding:60px 40px;max-width:800px;margin:0 auto;text-align:center;}
+  .thesis-formula{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;
+                   font-family:var(--mono);font-size:13px;margin:32px 0;}
+  .tf-box{padding:8px 14px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.06em;}
+  .tf-arrow{color:var(--dim);padding:0 8px;font-size:16px;}
+  .tf-time{background:rgba(126,184,255,.1);color:var(--accent);border:1px solid rgba(126,184,255,.2);}
+  .tf-anim{background:rgba(78,205,196,.1);color:var(--accent2);border:1px solid rgba(78,205,196,.2);}
+  .tf-meas{background:rgba(192,132,252,.1);color:var(--violet);border:1px solid rgba(192,132,252,.2);}
+  .tf-cons{background:rgba(80,232,144,.1);color:var(--ok);border:1px solid rgba(80,232,144,.2);}
+  .tf-rend{background:rgba(247,183,49,.1);color:var(--gold);border:1px solid rgba(247,183,49,.2);}
+
+  /* PHASES */
+  .phases{padding:60px 40px 80px;max-width:1100px;margin:0 auto;}
+  .section-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+                  color:var(--dim);margin-bottom:32px;text-align:center;}
+  .phase-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(460px,1fr));gap:16px;}
+  .phase-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+               overflow:hidden;transition:border-color .2s,transform .2s;}
+  .phase-card:hover{transform:translateY(-2px);}
+  .phase-card:nth-child(1){border-color:rgba(126,184,255,.2);}
+  .phase-card:nth-child(2){border-color:rgba(78,205,196,.2);}
+  .phase-card:nth-child(3){border-color:rgba(192,132,252,.2);}
+  .phase-card:nth-child(4){border-color:rgba(80,232,144,.2);}
+  .phase-card:nth-child(1):hover{border-color:rgba(126,184,255,.5);}
+  .phase-card:nth-child(2):hover{border-color:rgba(78,205,196,.5);}
+  .phase-card:nth-child(3):hover{border-color:rgba(192,132,252,.5);}
+  .phase-card:nth-child(4):hover{border-color:rgba(80,232,144,.5);}
+
+  .phase-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);
+                 display:flex;align-items:center;gap:14px;}
+  .phase-num{font-family:var(--mono);font-size:11px;font-weight:700;padding:4px 10px;border-radius:3px;}
+  .pn-1{background:rgba(126,184,255,.12);color:var(--accent);}
+  .pn-2{background:rgba(78,205,196,.12);color:var(--accent2);}
+  .pn-3{background:rgba(192,132,252,.12);color:var(--violet);}
+  .pn-4{background:rgba(80,232,144,.12);color:var(--ok);}
+  .phase-title{font-size:17px;font-weight:600;color:#e8e8f8;}
+  .phase-body{padding:20px 24px;}
+  .phase-desc{font-size:14px;color:var(--dim);line-height:1.7;margin-bottom:16px;}
+  .phase-insight{font-family:var(--mono);font-size:11px;color:var(--text);
+                  background:rgba(0,0,0,.3);border-left:3px solid;border-radius:0 4px 4px 0;
+                  padding:10px 14px;line-height:1.6;margin-bottom:16px;}
+  .pi-1{border-color:var(--accent);}
+  .pi-2{border-color:var(--accent2);}
+  .pi-3{border-color:var(--violet);}
+  .pi-4{border-color:var(--ok);}
+  .phase-link{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;
+               padding:7px 14px;border-radius:4px;text-decoration:none;transition:all .15s;border:1px solid;}
+  .pl-1{color:var(--accent);border-color:rgba(126,184,255,.3);background:rgba(126,184,255,.06);}
+  .pl-1:hover{background:rgba(126,184,255,.14);}
+  .pl-2{color:var(--accent2);border-color:rgba(78,205,196,.3);background:rgba(78,205,196,.06);}
+  .pl-2:hover{background:rgba(78,205,196,.14);}
+  .pl-3{color:var(--violet);border-color:rgba(192,132,252,.3);background:rgba(192,132,252,.06);}
+  .pl-3:hover{background:rgba(192,132,252,.14);}
+  .pl-4{color:var(--ok);border-color:rgba(80,232,144,.3);background:rgba(80,232,144,.06);}
+  .pl-4:hover{background:rgba(80,232,144,.14);}
+
+  /* CODE BLOCK */
+  .code-section{padding:40px;max-width:900px;margin:0 auto;}
+  .code-block{background:#080810;border:1px solid var(--border);border-radius:8px;
+               padding:24px 28px;font-family:var(--mono);font-size:12px;line-height:1.8;
+               overflow-x:auto;white-space:pre;}
+  .c-dim{color:var(--dim);}
+  .c-accent{color:var(--accent);}
+  .c-accent2{color:var(--accent2);}
+  .c-violet{color:var(--violet);}
+  .c-ok{color:var(--ok);}
+  .c-gold{color:var(--gold);}
+  .c-str{color:#f4a261;}
+
+  /* NOVELTY TABLE */
+  .table-section{padding:40px;max-width:900px;margin:0 auto;}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+  th{padding:10px 16px;text-align:left;color:var(--dim);border-bottom:1px solid var(--border);
+     font-weight:500;letter-spacing:.06em;text-transform:uppercase;font-size:10px;}
+  td{padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text);}
+  tr:last-child td{border-bottom:none;}
+  .row-sf td{background:rgba(126,184,255,.04);color:#e8e8f8;font-weight:600;}
+  .row-sf td:first-child{color:var(--accent);}
+  .check{color:var(--ok);}
+  .cross{color:var(--muted);}
+  .partial{color:var(--gold);}
+
+  /* INSIGHT BLOCK */
+  .insight-section{padding:40px;max-width:800px;margin:0 auto;}
+  .insight-card{background:var(--surface);border:1px solid rgba(126,184,255,.15);border-radius:10px;
+                 padding:32px 36px;text-align:center;}
+  .insight-card blockquote{font-size:18px;line-height:1.7;color:#d8d8f0;font-weight:400;font-style:italic;
+                             margin-bottom:16px;}
+  .insight-card cite{font-family:var(--mono);font-size:10px;color:var(--dim);}
+
+  /* FOOTER */
+  footer{border-top:1px solid var(--border);padding:32px 40px;
+          display:flex;align-items:center;justify-content:space-between;
+          font-family:var(--mono);font-size:10px;color:var(--dim);}
+  footer a{color:var(--dim);text-decoration:none;}
+  footer a:hover{color:var(--accent);}
+
+  /* DIVIDER */
+  .divider{height:1px;background:linear-gradient(to right,transparent,var(--border),transparent);
+            margin:0 40px;}
+
+  /* SECTION HEADERS */
+  .section-h{font-size:28px;font-weight:700;color:#e8e8f8;margin-bottom:8px;text-align:center;letter-spacing:-.02em;}
+  .section-sub{font-size:15px;color:var(--dim);text-align:center;margin-bottom:40px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="#">Spatial<span>Flow</span></a>
+  <a href="#phases">Demos</a>
+  <a href="#how-it-works">How it works</a>
+  <a href="#novelty">Research</a>
+  <div class="nav-right">
+    <a class="gh-btn" href="https://github.com/smarthillc/spatialflow" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      smarthillc/spatialflow
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">Reactive Constraint Layout</div>
+  <h1>A canvas designed to be<br>reasoned about by <span>agents</span></h1>
+  <p class="hero-sub">
+    SpatialFlow unifies time-based animation, measurement-driven spatial constraints, and AI agent authoring into a single reactive dataflow graph.
+  </p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="spatialflow-author.html">Open Authoring Surface →</a>
+    <a class="btn-ghost" href="https://github.com/smarthillc/spatialflow" target="_blank">View on GitHub</a>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- THESIS -->
+<section class="thesis">
+  <div class="section-label">The Architecture</div>
+  <h2 class="section-h" style="margin-bottom:12px;">Six-layer reactive pipeline</h2>
+  <p class="section-sub">Every element's position is a live expression over other elements' measured bounds — not a hardcoded value.</p>
+  <div class="thesis-formula">
+    <div class="tf-box tf-time">time</div>
+    <span class="tf-arrow">→</span>
+    <div class="tf-box tf-anim">animations</div>
+    <span class="tf-arrow">→</span>
+    <div class="tf-box tf-meas">measurements</div>
+    <span class="tf-arrow">→</span>
+    <div class="tf-box tf-cons">constraints</div>
+    <span class="tf-arrow">→</span>
+    <div class="tf-box tf-rend">render</div>
+  </div>
+  <p style="font-family:var(--mono);font-size:12px;color:var(--dim);line-height:1.8;">
+    <span style="color:var(--violet)">C(t)</span> — the constraint layer — is defined in terms of
+    <span style="color:var(--accent2)">M(t)</span> (measured bounds of other elements), not <span style="color:var(--accent)">t</span> directly.<br>
+    So <code style="color:var(--ok)">subtitle.y = title.bounds.bottom + 16</code> re-evaluates every frame as the title grows.
+  </p>
+</section>
+
+<div class="divider"></div>
+
+<!-- PHASES -->
+<section class="phases" id="phases">
+  <div class="section-label">Four Phases</div>
+  <h2 class="section-h">From signals to authoring</h2>
+  <p class="section-sub">Each phase builds on the last. All demos are self-contained HTML files — no build step.</p>
+
+  <div class="phase-grid">
+
+    <!-- Phase 1 -->
+    <div class="phase-card">
+      <div class="phase-header">
+        <span class="phase-num pn-1">Phase 1</span>
+        <span class="phase-title">Interactive Signals</span>
+      </div>
+      <div class="phase-body">
+        <p class="phase-desc">Any signal — mouse, scroll, viewport, time, custom — becomes a root of the constraint graph. Elements constrain their position based on other elements' live measured bounds, which themselves depend on signals.</p>
+        <div class="phase-insight pi-1">mouse.x → box0.x → box0.bounds.right → box1.x → … → box5.x<br>1 signal drives 16 constraint resolutions per frame</div>
+        <p class="phase-desc" style="font-size:12px;margin-bottom:16px;">CSS and GSAP can animate on scroll. They can't express "element B's position is a function of element A's rendered bounds which depends on the mouse." That cross-element measurement dependency is the differentiator.</p>
+        <a class="phase-link pl-1" href="spatialflow-interactive.html">Open Demo →</a>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div class="phase-card">
+      <div class="phase-header">
+        <span class="phase-num pn-2">Phase 2</span>
+        <span class="phase-title">Agent Negotiation</span>
+      </div>
+      <div class="phase-body">
+        <p class="phase-desc">Claude receives the current spec + a natural language instruction, generates a JSON command array, executes against the live engine, receives violation feedback, and corrects — up to 3 rounds.</p>
+        <div class="phase-insight pi-2">"make the dot follow the mouse"<br>→ <span style="color:var(--accent2)">{target:"dot", x:"mouse.x", y:"mouse.y"}</span><br>→ applied, 0 violations, resolved in 1 round</div>
+        <p class="phase-desc" style="font-size:12px;margin-bottom:16px;">Key discovery: agents generate conditional expressions, not hardcoded positions. Given "label on whichever side has more space", Claude writes a live ternary that evaluates geometry every frame.</p>
+        <a class="phase-link pl-2" href="spatialflow-negotiate.html">Open Demo →</a>
+      </div>
+    </div>
+
+    <!-- Phase 3 -->
+    <div class="phase-card">
+      <div class="phase-header">
+        <span class="phase-num pn-3">Phase 3</span>
+        <span class="phase-title">Semantic Intents</span>
+      </div>
+      <div class="phase-body">
+        <p class="phase-desc">Intents are stored as living relationships — natural language paired with a compiled constraint expression. Three types: reactive (never stale), directional (may need re-compile when layout shifts), and measure (tracks actual rendered dimensions).</p>
+        <div class="phase-insight pi-3">"subtitle always 16px below title"<br>→ stored as: <span style="color:var(--violet)">subtitle.y = title.bounds.bottom + 16</span><br>→ title grows → subtitle follows automatically</div>
+        <p class="phase-desc" style="font-size:12px;margin-bottom:16px;">The registry knows <em>why</em> each element is where it is. Directional intents go stale when their dependency moves significantly — a re-compile button fetches new geometry and rewrites the expression.</p>
+        <a class="phase-link pl-3" href="spatialflow-semantic.html">Open Demo →</a>
+      </div>
+    </div>
+
+    <!-- Phase 4 -->
+    <div class="phase-card">
+      <div class="phase-header">
+        <span class="phase-num pn-4">Phase 4</span>
+        <span class="phase-title">Authoring Surface</span>
+      </div>
+      <div class="phase-body">
+        <p class="phase-desc">The canvas becomes directly manipulable. Click to select any element — the inspector shows live measurements updating every frame. Drag to move — constraints propagate immediately. Type an intent — constraint arrows appear on the SVG overlay.</p>
+        <div class="phase-insight pi-4">Select element → "always centered inside the hero box"<br>→ two constraints applied<br>→ green reactive arrows: hero_box → dot</div>
+        <p class="phase-desc" style="font-size:12px;margin-bottom:16px;">Agents and humans share the same canvas. The agent's output is a living constraint the human can inspect, drag against, and override. The SVG overlay makes the constraint graph visible.</p>
+        <a class="phase-link pl-4" href="spatialflow-author.html">Open Demo →</a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- HOW IT WORKS -->
+<section class="code-section" id="how-it-works">
+  <div class="section-label" style="text-align:center;margin-bottom:32px;">Constraint Expression Syntax</div>
+  <div class="code-block"><span class="c-dim">// Expressions are strings evaluated against live measurements + signals</span>
+
+<span class="c-dim">// Element measurements</span>
+<span class="c-accent">"title.bounds.bottom + 16"</span>                  <span class="c-dim">// reactive: re-evaluates every frame</span>
+<span class="c-accent2">"hero_box.centerX"</span>                              <span class="c-dim">// tracks center of another element</span>
+<span class="c-violet">"title.actualWidth"</span>                             <span class="c-dim">// actual rendered text width</span>
+
+<span class="c-dim">// Slide pseudo-element (always available)</span>
+<span class="c-accent">"slide.centerX - 250"</span>                           <span class="c-dim">// center on slide</span>
+<span class="c-accent">"slide.width * 0.6 - 40"</span>                        <span class="c-dim">// proportional sizing</span>
+
+<span class="c-dim">// Interactive signals</span>
+<span class="c-ok">"mouse.x + 100 * cos(time.ms * 0.001)"</span>         <span class="c-dim">// orbit</span>
+<span class="c-ok">"clamp(scroll.y / 200, 0, 1)"</span>                  <span class="c-dim">// scroll-driven opacity</span>
+
+<span class="c-dim">// Ternary — agents generate these natively</span>
+<span class="c-gold">"hero_box.bounds.left > slide.width - hero_box.bounds.right"</span>
+<span class="c-gold">"  ? hero_box.bounds.left - label.width - 12"</span>   <span class="c-dim">// left side has more space</span>
+<span class="c-gold">"  : hero_box.bounds.right + 12"</span>                <span class="c-dim">// right side has more space</span>
+
+<span class="c-dim">// Math: sin, cos, sqrt, pow, clamp, lerp, midpoint, abs, min, max</span></div>
+</section>
+
+<div class="divider"></div>
+
+<!-- NOVELTY TABLE -->
+<section class="table-section" id="novelty">
+  <div class="section-label" style="text-align:center;margin-bottom:32px;">Prior Art Comparison</div>
+  <h2 class="section-h" style="margin-bottom:8px;">What exists vs. what's new</h2>
+  <p class="section-sub">Validated against 2025 academic literature — Reactive Vega, ConstraintLLM (EMNLP 2025), AutoPresent (CVPR 2025), PPTAgent (EMNLP 2025).</p>
+  <table>
+    <thead>
+      <tr>
+        <th>System</th>
+        <th>Reactive</th>
+        <th>Measurement-driven</th>
+        <th>Animation</th>
+        <th>Agent-native</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Reactive Vega (2015)</td>
+        <td class="check">✓</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td>
+      </tr>
+      <tr>
+        <td>Cassowary / Autolayout</td>
+        <td class="cross">—</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td>
+      </tr>
+      <tr>
+        <td>Framer Motion / GSAP</td>
+        <td class="cross">—</td><td class="cross">—</td><td class="check">✓</td><td class="cross">—</td>
+      </tr>
+      <tr>
+        <td>Figma Auto Layout</td>
+        <td class="cross">—</td><td class="partial">partial</td><td class="cross">—</td><td class="cross">—</td>
+      </tr>
+      <tr>
+        <td>AutoPresent (CVPR 2025)</td>
+        <td class="cross">—</td><td class="check">✓</td><td class="cross">—</td><td class="partial">one-shot</td>
+      </tr>
+      <tr>
+        <td>ConstraintLLM (EMNLP 2025)</td>
+        <td class="cross">—</td><td class="cross">—</td><td class="cross">—</td><td class="partial">industrial opt.</td>
+      </tr>
+      <tr class="row-sf">
+        <td>SpatialFlow</td>
+        <td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓ live loop</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="divider"></div>
+
+<!-- INSIGHT -->
+<section class="insight-section">
+  <div class="insight-card">
+    <blockquote>
+      "The canvas is a shared reasoning surface between agents and humans. When an agent generates a constraint expression, it isn't executing a command — it's writing behavior that runs forever."
+    </blockquote>
+    <cite>— The key insight from Phase 3 experiments</cite>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<footer>
+  <span>SpatialFlow — built May 2026</span>
+  <div style="display:flex;gap:20px;">
+    <a href="https://github.com/smarthillc/spatialflow" target="_blank">GitHub</a>
+    <a href="spatialflow-interactive.html">Phase 1</a>
+    <a href="spatialflow-negotiate.html">Phase 2</a>
+    <a href="spatialflow-semantic.html">Phase 3</a>
+    <a href="spatialflow-author.html">Phase 4</a>
+  </div>
+</footer>
+
+</body>
+</html>
